@@ -1,0 +1,52 @@
+### Added
+- Safe loss access method in TrainingProgressCallback x1
+- Defensive programming for state access x1
+- Improved error handling in callbacks x1
+- Enhanced TensorBoard logging configuration x1
+- Safe tensors saving support x1
+
+### Fixed
+- Log history access error in training callback x1
+- Progress reporting on first training steps x1
+- Loss display when not yet available x1
+- Checkpoint saving method signature mismatch x1
+- TensorBoard logging setup x1# Changelog
+
+All notable changes to this project will be documented in this file.
+
+## [Unreleased]
+
+### Fixed
+- Restructured project into modular components for better organization x1
+- Created separate configuration module with detailed documentation x1
+
+### Added
+- New directory structure with logical separation of concerns x1
+- Comprehensive docstrings for configuration parameters x1
+- Detailed training progress callback with proper type hints x1
+- Enhanced logging with memory tracking and progress calculations x1
+- Custom exceptions with detailed error categorization x1
+- MPS-optimized trainer with improved memory management x1
+- Extended training step implementation with gradient handling x1
+- Main Phi2 trainer with complete training pipeline x1
+- Proper type hints and error handling throughout codebase x1
+- Comprehensive command-line interface with all training parameters x1
+- Environment validation and configuration setup x1
+- Package initialization files with proper imports x1
+- Version tracking in root __init__.py x1
+- Project configuration files (setup.py, pyproject.toml) x1
+- Comprehensive README with installation and usage instructions x1
+- License file with MIT license x1
+- Requirements.txt with pinned dependencies x1
+
+### Fixed
+- Loss computation with proper batch handling x1
+- Memory management for MPS devices x1
+- Checkpoint saving with memory cleanup x1
+- Dataset preparation with labels for language modeling x1
+- Error handling with appropriate exit codes x1
+- Module imports with __all__ declarations x1
+- Development tooling configuration x1
+- Updated MPSOptimizedTrainer.compute_loss() method signature to match parent class interface x1
+- Added proper data collator and label configuration for causal language modeling x1
+- Fixed loss computation in training loop by ensuring labels are provided x1
