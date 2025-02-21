@@ -1,4 +1,4 @@
-# Phi-2 Humor Fine-tuning
+# Phi-2 Fine-tuning (humor example)
 
 This project fine-tunes Microsoft's Phi-2 language model to generate humorous responses using Low-Rank Adaptation (LoRA). The fine-tuning process preserves the base model while creating a small adapter that enhances the model's ability to provide engaging and humorous explanations.
 
