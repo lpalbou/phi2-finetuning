@@ -141,7 +141,7 @@ MIT License - see LICENSE file for details
 
 ## A few examples
 
-The fine-tuned model was achieved by training on the tinyest example possible (humorous responses)[data/humorous_responses.jsonl]. I was personally surprised to see how much phi-2 had changed with so little fine tuning.
+The fine-tuned model was achieved by training on the tinyest example possible [humorous responses](data/humorous_responses.jsonl). I was personally surprised to see how much phi-2 had changed with so little fine tuning.
 
 ### Question: What is quantum computing?
 
