@@ -61,8 +61,13 @@ class ModelComparator:
         """Generate response using specified model."""
         model = self.lora_model if use_lora else self.base_model
         
-        prompt = f"{self.system_prompt}\n\n{question}"
-        inputs = self.tokenizer(prompt, return_tensors="pt").to(self.device)
+        # Use the same format as dialogue.py
+        formatted_prompt = (
+            "Instruct: {prompt}\n"
+            "Output: "
+        ).format(prompt=question)
+        
+        inputs = self.tokenizer(formatted_prompt, return_tensors="pt").to(self.device)
         
         with torch.no_grad():
             outputs = model.generate(
@@ -72,7 +77,8 @@ class ModelComparator:
             )
         
         response = self.tokenizer.decode(outputs[0], skip_special_tokens=True)
-        response = response.replace(self.system_prompt, "").strip()
+        # Remove the prompt from the response
+        response = response.replace(formatted_prompt, "").strip()
         
         return response
 

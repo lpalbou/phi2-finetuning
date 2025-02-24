@@ -83,11 +83,8 @@ class ModelDialogue:
         """
         # Format the prompt
         formatted_prompt = (
-            "Below is an instruction that describes a task. "
-            "Write a response that completes the request.\n\n"
-            "### Instruction:\n"
-            f"{prompt}\n\n"
-            "### Response:\n"
+            "Instruct: {prompt}\n"
+            "Output: "
         )
         
         # Tokenize
