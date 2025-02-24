@@ -4,7 +4,7 @@ import os
 import shutil
 import logging
 import torch
-from typing import Optional, Dict, Any, Tuple
+from typing import Optional, Dict, Any, Tuple, Type
 from datasets import load_dataset, Dataset, DatasetDict
 from transformers import (
     AutoModelForCausalLM,
@@ -19,6 +19,7 @@ from config.training_config import TrainingConfig
 from utils.exceptions import DatasetValidationError, ModelPreparationError, DeviceError
 from trainers.mps_optimized_trainer import MPSOptimizedTrainer
 from callbacks.training_progress_callback import TrainingProgressCallback
+from trainers.base_optimized_trainer import BaseOptimizedTrainer
 
 # Configure logging
 logging.basicConfig(
@@ -48,9 +49,14 @@ class Phi2LoRATrainer:
     """
 
     # Class-level mapping of model configurations
+    # q_proj, k_proj, v_proj : key to encoding attention mechanism (how the model attends to different input parts)
+    # dense : Processes output from attention layers, refining knowledge representation
+    # embed_tokens : how words are represented internally (Defines word embeddings, necessary for learning new terminology)
+    # mlp.fc1, mlp.fc2 : key to encoding deeper semantic understanding (Core feed-forward layers that process relationships between learned facts)
+    # lm_head : ensure concepts are properly expressed (Controls final text generation, affecting style, fluency, and formatting)
     MODEL_CONFIGS = {
         "microsoft/phi-2": {
-            "target_modules": ["q_proj", "k_proj", "v_proj", "dense"],
+            "target_modules": ["q_proj", "k_proj", "v_proj", "dense", "embed_tokens", "mlp.fc1", "mlp.fc2", "lm_head"],
             "description": "Original Phi-2 model target modules"
         },
         "microsoft/Phi-3.5-mini-instruct": {
@@ -242,7 +248,6 @@ class Phi2LoRATrainer:
             dataset = load_dataset('json', data_files=self.dataset_path)
             self.validate_dataset(dataset)
             
-            # Show progress during tokenization
             print("Tokenizing dataset...")
             
             def tokenize_function(examples: Dict[str, Any]) -> Dict[str, Any]:
@@ -262,14 +267,12 @@ class Phi2LoRATrainer:
                 encoded["labels"] = encoded["input_ids"].copy()
                 return encoded
 
-            # Add progress bar for dataset processing
+            # Modified map call without position parameter
             tokenized_dataset = dataset.map(
                 tokenize_function,
                 batched=True,
                 remove_columns=dataset["train"].column_names,
-                desc="Processing dataset",
-                position=0,
-                leave=True
+                desc="Processing dataset"  # Keep description for progress
             )
 
             print("Splitting dataset...")
@@ -329,6 +332,17 @@ class Phi2LoRATrainer:
             logging_nan_inf_filter=True
         )
 
+    def _get_optimized_trainer(self) -> Type[BaseOptimizedTrainer]:
+        """Get the appropriate optimized trainer for the current device."""
+        if torch.cuda.is_available():
+            from trainers.cuda_optimized_trainer import CUDAOptimizedTrainer
+            return CUDAOptimizedTrainer
+        elif torch.backends.mps.is_available():
+            from trainers.mps_optimized_trainer import MPSOptimizedTrainer
+            return MPSOptimizedTrainer
+        else:
+            return Trainer
+
     def train(self) -> None:
         """Execute the training process."""
         # Check tensorboard availability
@@ -353,8 +367,11 @@ class Phi2LoRATrainer:
                 mlm=False  # We want causal language modeling, not masked
             )
 
+            # Get appropriate trainer class
+            trainer_class = self._get_optimized_trainer()
+            
             # Initialize trainer
-            trainer = MPSOptimizedTrainer(
+            trainer = trainer_class(
                 model=self.model,
                 args=training_args,
                 train_dataset=tokenized_dataset["train"],

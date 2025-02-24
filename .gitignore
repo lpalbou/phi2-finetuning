@@ -1,4 +1,5 @@
 # Model outputs and training artifacts
+data_tests/
 output/
 runs/
 checkpoints/
