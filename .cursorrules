@@ -11,7 +11,12 @@ This project is a fine-tuning tool for the Phi-2 and Phi-3.5 models.
 
 
 # ERROR FIXING PROCESS
-
+Important instructions for code analysis:
+1. Before suggesting solutions, list ALL relevant files and their relationships
+2. Check for duplicate class/function implementations across files
+3. Create a dependency graph showing which files import from where
+4. When showing files, always specify the FULL path to avoid ambiguity
+5. If multiple implementations exist, compare them before suggesting changes
 
 
 # BUILDING PROCESS
