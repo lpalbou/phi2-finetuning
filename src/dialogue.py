@@ -7,7 +7,7 @@ import torch
 from termcolor import colored
 from transformers import AutoModelForCausalLM, AutoTokenizer
 from peft import PeftModel, PeftConfig
-from utils.device_utils import detect_device
+from src.utils.device_utils import detect_device
 
 class ModelDialogue:
     """Class for interactive dialogue with the model."""

@@ -31,15 +31,9 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
-# Specifically deactivates the warning about saving embedding layers
+# Filter out the specific warning
 import warnings
-warnings.filterwarnings(
-    "ignore",
-    message="Setting save_embedding_layers to True as embedding layers found in target_modules.",
-    category=UserWarning,
-    module=r"peft\.utils\.save_and_load"
-)
-import warnings
+warnings.filterwarnings("ignore", message="Setting `save_embedding_layers` to `True` as embedding layers found in `target_modules`.")
 warnings.filterwarnings(
     "ignore",
     message="`use_cache=True` is incompatible with gradient checkpointing. Setting `use_cache=False`.",
