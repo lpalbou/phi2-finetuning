@@ -1,19 +1,18 @@
-# Phi-2 Fine-tuning (humor example)
+# Phi-2 Fine-tuning
 
-This project fine-tunes Microsoft's Phi-2 language model to generate humorous responses using Low-Rank Adaptation (LoRA). The fine-tuning process preserves the base model while creating a small adapter that enhances the model's ability to provide engaging and humorous explanations.
+This project fine-tunes Microsoft's Phi-2 language model based on a .jsonl file with 'prompt' and 'response' pairs. The fine-tuning process preserves the base model while creating a small adapter that enhances the model's ability based on the provided dataset.
 
 ## Features
 
-- Fine-tune Phi-2 with LoRA for humorous responses
-- Memory-efficient training optimized for Apple Silicon (MPS)
-- Interactive comparison between original and fine-tuned outputs
+- Fine-tune Phi-2 with LoRA for provided dataset
+- Memory-efficient training optimized for Apple Silicon (MPS) and CUDA (GPU)
 - Minimal disk space requirements (adapter is ~20MB vs. full model ~2.7GB)
 
 ## Requirements
 
-- macOS 12.3+ with Apple Silicon
+- macOS 12.3+ with Apple Silicon OR Linux with CUDA
 - Python 3.9+
-- PyTorch 2.2.0+ with MPS support
+- PyTorch 2.2.0+ with MPS support OR PyTorch 2.2.0+ with CUDA support
 - ~21GB available memory for model comparison
 
 ## Installation
@@ -21,7 +20,7 @@ This project fine-tunes Microsoft's Phi-2 language model to generate humorous re
 1. Clone the repository:
 ```bash
 git clone [your-repo-url]
-cd phi2-humor-finetuning
+cd phi2-finetuning
 ```
 
 2. Create and activate a virtual environment:
@@ -71,29 +70,11 @@ python src/main.py \
     --gradient_accumulation_steps 32
 ```
 
-### Comparing Original vs. Fine-tuned Outputs
-
-After training, use the comparison script to see the difference between the original and fine-tuned model:
-
-```bash
-python compare_models.py
-```
-
-This will:
-1. Load the original Phi-2 model
-2. Generate responses for test questions
-3. Apply your LoRA adapter
-4. Generate humorous responses for the same questions
-5. Show responses side by side with color coding:
-   - Blue: Original model responses
-   - Green: Fine-tuned humorous responses
-
-## How It Works
 
 ### Fine-tuning Process
 1. The original Phi-2 model remains unchanged
-2. LoRA adapter (~20MB) contains weight adjustments
-3. Fine-tuning focuses on humor and engagement
+2. LoRA adapter (eg. ~20MB) contains weight adjustments
+3. Fine-tuning focuses on dataset provided
 4. Memory-efficient training with gradient checkpointing
 
 ### LoRA Adaptation
