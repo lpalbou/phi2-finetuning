@@ -200,7 +200,25 @@ class Phi2LoRATrainer:
                     f"Memory allocated: {torch.mps.current_allocated_memory() / 1024**2:.2f} MB"
                 )
             
-            self.model = get_peft_model(self.model, self.lora_config)
+            # Configure PEFT model with task-specific settings
+            peft_config = LoraConfig(
+                r=self.config.lora_r,
+                lora_alpha=self.config.lora_alpha,
+                lora_dropout=self.config.lora_dropout,
+                bias="none",
+                task_type=TaskType.CAUSAL_LM,
+                target_modules=self._get_model_specific_config()["target_modules"],
+                inference_mode=False,
+                # Add this to preserve model attributes
+                modules_to_save=['label_names']
+            )
+            
+            # Prepare PEFT model
+            self.model = get_peft_model(self.model, peft_config)
+            
+            # Explicitly set label names on the PEFT model
+            if not hasattr(self.model, 'label_names'):
+                self.model.label_names = ['labels']
             
             trainable_params = sum(
                 p.numel() for p in self.model.parameters() if p.requires_grad
