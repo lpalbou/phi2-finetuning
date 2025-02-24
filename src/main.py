@@ -61,7 +61,7 @@ def setup_arg_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--learning_rate",
         type=float,
-        default=1e-4,
+        default=2e-4,
         help="Learning rate"
     )
     parser.add_argument(
