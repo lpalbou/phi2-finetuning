@@ -41,11 +41,11 @@ class TrainingProgressCallback(TrainerCallback):
         """Get memory usage based on device type."""
         try:
             if torch.cuda.is_available():
-                allocated = torch.cuda.memory_allocated() / (1024**2)
-                return f"GPU Memory: {allocated:.2f} MB"
+                allocated = torch.cuda.memory_allocated() / (1024**3)  # Convert to GB
+                return f"GPU Memory: {allocated:.2f} GB"
             elif torch.backends.mps.is_available():
-                allocated = torch.mps.current_allocated_memory() / (1024**2)
-                return f"MPS Memory: {allocated:.2f} MB"
+                allocated = torch.mps.current_allocated_memory() / (1024**3)  # Convert to GB
+                return f"MPS Memory: {allocated:.2f} GB"
             else:
                 return "Memory: N/A (CPU)"
         except Exception:
@@ -78,16 +78,8 @@ class TrainingProgressCallback(TrainerCallback):
             current_epoch = int(state.epoch)
             mem_info = self._get_memory_info()
             
-            # Get loss from trainer
-            current_loss = "N/A"
-            if self._trainer and hasattr(self._trainer, 'current_loss'):
-                loss_tensor = self._trainer.current_loss
-                if isinstance(loss_tensor, torch.Tensor):
-                    current_loss = f"{loss_tensor.item():.4f}"
-            
             self.spinner.update_message(
-                f"Training - Epoch {current_epoch}/{int(args.num_train_epochs)} | "
-                f"{mem_info} | Loss: {current_loss}"
+                f"Training - Epoch {current_epoch}/{int(args.num_train_epochs)} | {mem_info}"
             )
 
     def on_evaluate(self, args, state, control, **kwargs):
