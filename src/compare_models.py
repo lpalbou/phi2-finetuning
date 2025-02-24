@@ -27,17 +27,18 @@ class ModelComparator:
             "do_sample": True
         }
         
-        # Initialize models and LoRA
+        # Load models once at initialization
         self._initialize_models()
-        self._initialize_lora()
         
     def _initialize_models(self):
-        """Load base model and tokenizer at startup."""
+        """Load models and tokenizer once at startup."""
         print("\nInitializing models...")
         
+        # Load tokenizer
         print("Loading tokenizer...")
         self.tokenizer = AutoTokenizer.from_pretrained(self.base_model_name)
         
+        # Load base model
         print("Loading base model...")
         self.base_model = AutoModelForCausalLM.from_pretrained(
             self.base_model_name,
@@ -46,44 +47,25 @@ class ModelComparator:
         )
         self.base_model.eval()
         
-        # Start with base model
-        self.current_model = self.base_model
-        print("Base model loaded!")
-
-    def _initialize_lora(self):
-        """Initialize LoRA model once."""
-        print("Preparing LoRA adapter...")
+        # Create LoRA model as a separate instance
+        print("Loading LoRA model...")
         self.lora_model = PeftModel.from_pretrained(
             self.base_model,
             self.adapter_path
         )
         self.lora_model.eval()
-        print("LoRA adapter ready!")
-
-    def _apply_lora(self):
-        """Switch to LoRA model."""
-        print("\nSwitching to LoRA model...", end='\r')
-        self.current_model = self.lora_model
-
-    def _remove_lora(self):
-        """Switch back to base model."""
-        print("Switching to base model...", end='\r')
-        self.current_model = self.base_model
+        
+        print("Models ready!")
 
     def generate_response(self, question: str, use_lora: bool = False) -> str:
-        """Generate response for a single question."""
-        # Apply or remove LoRA as needed
-        if use_lora:
-            self._apply_lora()
-        else:
-            self._remove_lora()
-
-        # Generate response
+        """Generate response using specified model."""
+        model = self.lora_model if use_lora else self.base_model
+        
         prompt = f"{self.system_prompt}\n\n{question}"
         inputs = self.tokenizer(prompt, return_tensors="pt").to(self.device)
         
         with torch.no_grad():
-            outputs = self.current_model.generate(
+            outputs = model.generate(
                 **inputs,
                 **self.generation_config,
                 pad_token_id=self.tokenizer.pad_token_id
@@ -101,12 +83,9 @@ class ModelComparator:
         
         while True:
             try:
-                # Get input
                 user_input = input("\n> ").strip()
                 
-                # Handle commands
                 if user_input.lower() in ['quit', 'exit']:
-                    print("Goodbye!")
                     break
                 elif user_input.lower() == 'help':
                     print("\nCommands:")
@@ -117,18 +96,11 @@ class ModelComparator:
                 elif not user_input:
                     continue
                 
-                # Generate responses
-                print("\nGenerating base model response...", end='\r')
+                # Generate responses from both models
                 base_response = self.generate_response(user_input, use_lora=False)
-                
-                print("Generating LoRA model response...", end='\r')
                 lora_response = self.generate_response(user_input, use_lora=True)
                 
-                # Always return to base model state
-                self._remove_lora()
-                
                 # Display results
-                print(" " * 50, end='\r')  # Clear status line
                 print(f"\nQuestion: {colored(user_input, 'red')}")
                 print(f"Base model: {colored(base_response, 'blue')}")
                 print(f"LoRA model: {colored(lora_response, 'green')}")
@@ -139,13 +111,10 @@ class ModelComparator:
                 print(f"Error: {str(e)}")
 
     def cleanup(self):
-        """Clean up all models from memory."""
-        if hasattr(self, 'current_model'):
-            del self.current_model
-        if hasattr(self, 'base_model'):
-            del self.base_model
-        if hasattr(self, 'tokenizer'):
-            del self.tokenizer
+        """Clean up resources."""
+        del self.base_model
+        del self.lora_model
+        del self.tokenizer
         gc.collect()
         if torch.cuda.is_available():
             torch.cuda.empty_cache()
@@ -183,15 +152,18 @@ questions:
 Examples:
 --------
 1. Interactive mode with default model (Phi-2):
-   python compare_models.py --adapter_path output/my_adapter/final_adapter
+   python compare_models.py \\
+          --adapter_path    output/my_adapter/final_adapter
 
 2. Compare with a different base model:
-   python compare_models.py --base_model meta-llama/Llama-2-7b-chat-hf \
-                          --adapter_path output/my_adapter/final_adapter
+   python compare_models.py \\
+          --base_model     microsoft/phi-2 \\
+          --adapter_path   output/my_adapter/final_adapter
 
 3. Batch mode with custom questions:
-   python compare_models.py --adapter_path output/my_adapter/final_adapter \
-                          --questions_file my_test_questions.yaml
+   python compare_models.py \\
+          --adapter_path   output/my_adapter/final_adapter \\
+          --questions_file my_test_questions.yaml
         """
     )
     
