@@ -133,23 +133,6 @@ class Phi2LoRATrainer:
             # Use our device detection utility
             device_type, _ = detect_device()
             
-            # Check for 8-bit optimization availability
-            use_8bit = False
-            try:
-                import bitsandbytes
-                if device_type == "cuda":
-                    logger.info("CUDA platform detected - checking 8-bit support")
-                    use_8bit = hasattr(bitsandbytes.cuda, 'cadam32bit_grad_fp32')
-                    if use_8bit:
-                        logger.info("8-bit optimization is available")
-                    else:
-                        logger.info("8-bit optimization not available - using standard precision")
-                elif device_type == "mps":
-                    logger.info("Apple Silicon detected - using MPS optimizations (8-bit not supported)")
-                
-            except ImportError:
-                logger.info("bitsandbytes not installed - using standard precision")
-            
             # Load model with appropriate settings
             logger.info(f"Loading model: {self.model_name}")
             load_kwargs = {
@@ -158,8 +141,19 @@ class Phi2LoRATrainer:
                 "trust_remote_code": True
             }
             
-            if use_8bit and device_type == "cuda":
-                load_kwargs["load_in_8bit"] = True
+            # Only try 8-bit optimization on CUDA devices
+            if device_type == "cuda":
+                try:
+                    import bitsandbytes
+                    if hasattr(bitsandbytes.cuda, 'cadam32bit_grad_fp32'):
+                        logger.info("8-bit optimization is available")
+                        load_kwargs["load_in_8bit"] = True
+                    else:
+                        logger.info("8-bit optimization not available - using standard precision")
+                except ImportError:
+                    logger.info("bitsandbytes not installed - using standard precision")
+            else:
+                logger.info(f"Using standard precision for {device_type} device")
             
             self.model = AutoModelForCausalLM.from_pretrained(
                 self.model_name,
