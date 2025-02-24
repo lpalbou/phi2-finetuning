@@ -30,7 +30,7 @@ def setup_arg_parser() -> argparse.ArgumentParser:
         argparse.ArgumentParser: Configured argument parser
     """
     parser = argparse.ArgumentParser(
-        description="Fine-tune Phi-2 with LoRA for humorous responses"
+        description="Fine-tune language models with LoRA for humorous responses"
     )
     parser.add_argument(
         "--output_dir",
@@ -71,7 +71,7 @@ def setup_arg_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--gradient_accumulation_steps",
         type=int,
-        default=32,
+        default=64,
         help="Number of gradient accumulation steps"
     )
     parser.add_argument(
@@ -83,7 +83,7 @@ def setup_arg_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--lora_r",
         type=int,
-        default=8,
+        default=4,
         help="LoRA attention dimension"
     )
     parser.add_argument(
@@ -102,6 +102,12 @@ def setup_arg_parser() -> argparse.ArgumentParser:
         "--verbose",
         action="store_true",
         help="Enable verbose logging"
+    )
+    parser.add_argument(
+        "--model_name",
+        type=str,
+        default="microsoft/phi-2",
+        help="Name/path of the model to use (default: microsoft/phi-2)"
     )
     return parser
 
@@ -160,6 +166,7 @@ def main() -> None:
         trainer = Phi2LoRATrainer(
             output_dir=args.output_dir,
             dataset_path=args.dataset_path,
+            model_name=args.model_name,
             config=config
         )
 

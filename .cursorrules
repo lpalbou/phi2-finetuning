@@ -1,0 +1,37 @@
+# PROJECT OVERVIEW
+This project is a fine-tuning tool for the Phi-2 and Phi-3.5 models.
+
+
+# PERSONALITY
+
+
+
+# TECH STACK
+
+
+
+# ERROR FIXING PROCESS
+
+
+
+# BUILDING PROCESS
+
+
+# CURRENT FILE STRUCTURE
+tree -L 4 -a -I '.git|__pycache__|.DS_Store|.pytest_cache|.vscode'
+
+
+
+# IMPORTANT
+
+
+
+
+
+
+
+
+
+
+
+

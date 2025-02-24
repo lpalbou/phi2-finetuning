@@ -4,6 +4,7 @@ import logging
 import torch
 from torch.optim import AdamW
 from transformers import Trainer
+from tqdm.auto import tqdm
 from typing import Dict, Any, Optional, Union, List, Tuple
 
 # Configure logging
@@ -128,33 +129,57 @@ class MPSOptimizedTrainer(Trainer):
         inputs: Dict[str, torch.Tensor],
         num_items_in_batch: Optional[int] = None
     ) -> torch.Tensor:
-        """Perform a training step.
-        
-        Args:
-            model: The model to train
-            inputs: The inputs and targets of the model
-            num_items_in_batch: Number of items in the batch
-        
-        Returns:
-            torch.Tensor: The loss value
-        """
-        # Update the model's train mode
+        """Perform a training step with progress tracking."""
         model.train()
-        
-        # Move inputs to the correct device if needed
         inputs = self._prepare_inputs(inputs)
         
-        # Compute loss with gradient computation
-        with self.compute_loss_context_manager():
-            loss = self.compute_loss(model, inputs, num_items_in_batch=num_items_in_batch)
+        # Update progress bar description with loss
+        if hasattr(self, 'progress_bar'):
+            current_loss = getattr(self, 'current_loss', 0)
+            self.progress_bar.set_description(
+                f"Training Loss: {current_loss:.4f}"
+            )
         
+        with self.compute_loss_context_manager():
+            loss = self.compute_loss(model, inputs)
+            
         if self.args.gradient_accumulation_steps > 1:
             loss = loss / self.args.gradient_accumulation_steps
-        
-        # Backward pass
+            
         loss.backward()
         
+        # Store current loss for progress bar
+        self.current_loss = loss.detach().float()
+        
         return loss.detach()
+
+    def train(
+        self,
+        resume_from_checkpoint: Optional[Union[str, bool]] = None,
+        trial: Union[Any, None] = None,
+        **kwargs,
+    ):
+        """Override train to add progress bar."""
+        # Calculate total steps
+        total_steps = len(self.train_dataset) * self.args.num_train_epochs
+        
+        # Create progress bar
+        self.progress_bar = tqdm(
+            total=total_steps,
+            desc="Training",
+            position=0,
+            leave=True,
+            dynamic_ncols=True
+        )
+        
+        try:
+            output = super().train(resume_from_checkpoint=resume_from_checkpoint, trial=trial, **kwargs)
+            self.progress_bar.close()
+            return output
+            
+        except Exception as e:
+            self.progress_bar.close()
+            raise e
 
     def _save_checkpoint(
         self, 
@@ -208,26 +233,19 @@ class MPSOptimizedTrainer(Trainer):
         return super().get_eval_dataloader(eval_dataset)
 
     def log(self, logs: Dict[str, float], start_time: Optional[float] = None) -> None:
-        """Log training metrics.
-        
-        Args:
-            logs: Dictionary of metrics to log
-            start_time: Optional start time for computing training throughput
-        """
-        try:
-            if isinstance(logs, dict):
-                # Add MPS memory usage to logs
-                logs["mps_memory"] = (
-                    torch.mps.current_allocated_memory() / 1024**2 
-                    if torch.backends.mps.is_available() 
-                    else 0
-                )
-                
-                # Log GPU memory if start_time is provided (during training)
-                if start_time is not None and torch.backends.mps.is_available():
-                    logs["mps_memory_total"] = torch.mps.driver_allocated_memory() / 1024**2
+        """Enhanced logging with progress bar updates."""
+        if hasattr(self, 'progress_bar'):
+            # Update progress bar with current metrics
+            desc_items = []
+            for k, v in logs.items():
+                if isinstance(v, (int, float)):
+                    desc_items.append(f"{k}: {v:.4f}")
             
-            # Call parent class log method with all parameters
-            super().log(logs, start_time)
-        except Exception as e:
-            logger.warning(f"Error during logging: {str(e)}")
+            if desc_items:
+                self.progress_bar.set_description(" | ".join(desc_items))
+            
+            # Update progress
+            if "epoch" in logs:
+                self.progress_bar.update(1)
+        
+        super().log(logs, start_time)

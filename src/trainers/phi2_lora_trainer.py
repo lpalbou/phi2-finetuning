@@ -13,6 +13,7 @@ from transformers import (
     DataCollatorForLanguageModeling
 )
 from peft import LoraConfig, get_peft_model, TaskType
+from tqdm.auto import tqdm
 
 from config.training_config import TrainingConfig
 from utils.exceptions import DatasetValidationError, ModelPreparationError, DeviceError
@@ -46,10 +47,28 @@ class Phi2LoRATrainer:
         lora_config: LoRA configuration
     """
 
+    # Class-level mapping of model configurations
+    MODEL_CONFIGS = {
+        "microsoft/phi-2": {
+            "target_modules": ["q_proj", "k_proj", "v_proj", "dense"],
+            "description": "Original Phi-2 model target modules"
+        },
+        "microsoft/Phi-3.5-mini-instruct": {
+            "target_modules": [
+                "self_attn.qkv_proj",
+                "self_attn.o_proj",
+                "mlp.gate_up_proj",
+                "mlp.down_proj"
+            ],
+            "description": "Phi-3.5 mini instruct model target modules targeting attention and MLP layers"
+        }
+    }
+
     def __init__(
         self,
         output_dir: str,
         dataset_path: str,
+        model_name: str = "microsoft/phi-2",
         config: Optional[TrainingConfig] = None
     ) -> None:
         """Initialize the trainer.
@@ -57,13 +76,31 @@ class Phi2LoRATrainer:
         Args:
             output_dir: Directory to save the model
             dataset_path: Path to the JSONL dataset file
+            model_name: Name/path of the model to use (default: "microsoft/phi-2")
             config: Optional training configuration
         """
-        self.model_name = "microsoft/phi-2"
+        self.model_name = model_name
         self.output_dir = output_dir
         self.dataset_path = dataset_path
         self.config = config or TrainingConfig()
         self._setup_model_and_tokenizer()
+
+    def _get_model_specific_config(self) -> Dict[str, Any]:
+        """Get model-specific configuration parameters.
+        
+        Returns:
+            Dict containing model-specific parameters
+            
+        Raises:
+            ModelPreparationError: If model configuration is not found
+        """
+        try:
+            return self.MODEL_CONFIGS[self.model_name]
+        except KeyError:
+            raise ModelPreparationError(
+                f"Model '{self.model_name}' not found in supported configurations. "
+                f"Supported models: {list(self.MODEL_CONFIGS.keys())}"
+            )
 
     def _setup_model_and_tokenizer(self) -> None:
         """Initialize model and tokenizer with MPS-optimized settings."""
@@ -77,6 +114,7 @@ class Phi2LoRATrainer:
                 logger.info("Using MPS (Metal Performance Shaders) for acceleration")
 
             # Initialize tokenizer
+            logger.info(f"Loading tokenizer for model: {self.model_name}")
             self.tokenizer = AutoTokenizer.from_pretrained(
                 self.model_name,
                 trust_remote_code=True,
@@ -85,6 +123,7 @@ class Phi2LoRATrainer:
             self.tokenizer.pad_token = self.tokenizer.eos_token
             
             # Load model with float32 for MPS compatibility
+            logger.info(f"Loading model: {self.model_name}")
             self.model = AutoModelForCausalLM.from_pretrained(
                 self.model_name,
                 torch_dtype=torch.float32,
@@ -96,14 +135,24 @@ class Phi2LoRATrainer:
             self.model.gradient_checkpointing_enable()
             logger.info("Gradient checkpointing enabled")
             
-            # Configure LoRA
+            # Debug: Print model layer names
+            logger.info("Available model layers:")
+            for name, _ in self.model.named_modules():
+                if any(keyword in name for keyword in ['attention', 'mlp', 'dense', 'proj']):
+                    logger.info(f"  - {name}")
+
+            # Get model-specific configuration
+            model_config = self._get_model_specific_config()
+            logger.info(f"Using configuration for {self.model_name}: {model_config['description']}")
+            
+            # Configure LoRA with model-specific target modules
             self.lora_config = LoraConfig(
                 r=self.config.lora_r,
                 lora_alpha=self.config.lora_alpha,
                 lora_dropout=self.config.lora_dropout,
                 bias="none",
                 task_type=TaskType.CAUSAL_LM,
-                target_modules=["q_proj", "k_proj", "v_proj", "dense"],
+                target_modules=model_config["target_modules"],
                 inference_mode=False
             )
             logger.info("LoRA configuration completed")
@@ -188,50 +237,51 @@ class Phi2LoRATrainer:
         )
 
     def prepare_dataset(self) -> DatasetDict:
-        """Prepare and tokenize the dataset.
-        
-        Returns:
-            DatasetDict: Processed and split dataset
-            
-        Raises:
-            DatasetValidationError: If dataset preparation fails
-        """
+        """Prepare and tokenize the dataset with progress bar."""
         try:
             dataset = load_dataset('json', data_files=self.dataset_path)
             self.validate_dataset(dataset)
-
+            
+            # Show progress during tokenization
+            print("Tokenizing dataset...")
+            
             def tokenize_function(examples: Dict[str, Any]) -> Dict[str, Any]:
-                """Tokenize the examples."""
                 texts = [
                     self.format_instruction(p, r)
                     for p, r in zip(examples['prompt'], examples['response'])
                 ]
                 
-                # Tokenize with padding and truncation
                 encoded = self.tokenizer(
                     texts,
                     truncation=True,
                     max_length=self.config.max_seq_length,
                     padding="max_length",
-                    return_tensors=None  # Return as lists, not tensors
+                    return_tensors=None
                 )
                 
-                # Create labels for causal language modeling
                 encoded["labels"] = encoded["input_ids"].copy()
-                
                 return encoded
 
+            # Add progress bar for dataset processing
             tokenized_dataset = dataset.map(
                 tokenize_function,
                 batched=True,
-                remove_columns=dataset["train"].column_names
+                remove_columns=dataset["train"].column_names,
+                desc="Processing dataset",
+                position=0,
+                leave=True
             )
 
+            print("Splitting dataset...")
             splits = tokenized_dataset["train"].train_test_split(
                 test_size=0.1,
                 shuffle=True,
                 seed=42
             )
+            
+            print(f"Dataset ready: {len(splits['train'])} training examples, "
+                  f"{len(splits['test'])} test examples")
+            
             return splits
 
         except Exception as e:
