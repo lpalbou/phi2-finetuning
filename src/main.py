@@ -102,8 +102,10 @@ def setup_arg_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "--verbose",
-        action="store_true",
-        help="Enable verbose logging"
+        type=str,
+        choices=["none", "info", "debug"],
+        default="info",
+        help="Verbosity level (none, info, debug)"
     )
     parser.add_argument(
         "--model_name",
@@ -236,13 +238,24 @@ def setup_training_config(args: argparse.Namespace) -> TrainingConfig:
         lora_dropout=args.lora_dropout
     )
 
+def setup_logging(verbose_level: str) -> None:
+    """Configure logging based on verbosity level."""
+    if verbose_level == "none":
+        logging.getLogger().setLevel(logging.WARNING)
+    elif verbose_level == "info":
+        logging.getLogger().setLevel(logging.INFO)
+    elif verbose_level == "debug":
+        logging.getLogger().setLevel(logging.DEBUG)
+
 def main() -> None:
     """Main execution function."""
     parser = setup_arg_parser()
     args = parser.parse_args()
+    
+    print("") # Just formatting
 
-    if args.verbose:
-        logging.getLogger().setLevel(logging.DEBUG)
+    # Configure logging based on verbosity
+    setup_logging(args.verbose)
 
     try:
         # Validate environment

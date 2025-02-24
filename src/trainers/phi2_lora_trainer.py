@@ -21,6 +21,7 @@ from .mps_optimized_trainer import MPSOptimizedTrainer
 from ..callbacks.training_progress_callback import TrainingProgressCallback
 from .base_optimized_trainer import BaseOptimizedTrainer
 from ..utils.device_utils import detect_device
+from ..callbacks.progress_spinner import ProgressSpinner
 
 # Configure logging
 logging.basicConfig(
@@ -243,45 +244,50 @@ class Phi2LoRATrainer:
     def prepare_dataset(self) -> DatasetDict:
         """Prepare and tokenize the dataset with progress bar."""
         try:
+            # Load dataset with spinner
+            spinner = ProgressSpinner("Loading dataset file...")
+            spinner.start()
             dataset = load_dataset('json', data_files=self.dataset_path)
             self.validate_dataset(dataset)
+            spinner.stop("Dataset file loaded")
             
-            print("Tokenizing dataset...")
+            # Tokenization process
+            spinner = ProgressSpinner("Tokenizing dataset...")
+            spinner.start()
             
             def tokenize_function(examples: Dict[str, Any]) -> Dict[str, Any]:
                 texts = [
                     self.format_instruction(p, r)
                     for p, r in zip(examples['prompt'], examples['response'])
                 ]
-                
-                encoded = self.tokenizer(
+                return self.tokenizer(
                     texts,
                     truncation=True,
                     max_length=self.config.max_seq_length,
                     padding="max_length",
                     return_tensors=None
                 )
-                
-                encoded["labels"] = encoded["input_ids"].copy()
-                return encoded
 
-            # Modified map call without position parameter
             tokenized_dataset = dataset.map(
                 tokenize_function,
                 batched=True,
                 remove_columns=dataset["train"].column_names,
-                desc="Processing dataset"  # Keep description for progress
+                desc=None  # Remove the tqdm description to avoid conflicting messages
             )
+            spinner.stop("Dataset tokenized")
 
-            print("Splitting dataset...")
+            # Dataset splitting
+            spinner = ProgressSpinner("Splitting dataset...")
+            spinner.start()
             splits = tokenized_dataset["train"].train_test_split(
                 test_size=0.1,
                 shuffle=True,
                 seed=42
             )
-            
-            print(f"Dataset ready: {len(splits['train'])} training examples, "
-                  f"{len(splits['test'])} test examples")
+            spinner.stop(
+                f"Dataset ready: {len(splits['train'])} training examples, "
+                f"{len(splits['test'])} test examples"
+            )
             
             return splits
 
@@ -289,7 +295,7 @@ class Phi2LoRATrainer:
             raise DatasetValidationError(f"Dataset preparation failed: {str(e)}")
 
     def _setup_training_arguments(self, use_tensorboard: bool) -> TrainingArguments:
-        """Set up training arguments.
+        """Configure training arguments.
         
         Args:
             use_tensorboard: Whether to use tensorboard for logging
@@ -307,7 +313,7 @@ class Phi2LoRATrainer:
             warmup_ratio=self.config.warmup_ratio,
             logging_dir=os.path.join(self.output_dir, "logs"),
             logging_strategy="steps",
-            evaluation_strategy="epoch",
+            eval_strategy="epoch",
             save_strategy="epoch",
             logging_steps=1,
             logging_first_step=True,
@@ -343,63 +349,71 @@ class Phi2LoRATrainer:
 
     def train(self) -> None:
         """Execute the training process."""
-        # Check tensorboard availability
         try:
-            import tensorboard
-            use_tensorboard = True
-        except ImportError:
-            logger.warning(
-                "Tensorboard not installed. Training will proceed without tensorboard logging."
-            )
-            use_tensorboard = False
-
-        training_args = self._setup_training_arguments(use_tensorboard)
-
-        try:
-            # Prepare dataset
-            tokenized_dataset = self.prepare_dataset()
-
-            # Create data collator for language modeling
-            data_collator = DataCollatorForLanguageModeling(
-                tokenizer=self.tokenizer,
-                mlm=False  # We want causal language modeling, not masked
-            )
-
-            # Get appropriate trainer class
-            trainer_class = self._get_optimized_trainer()
+            # Check tensorboard availability
+            try:
+                import tensorboard
+                use_tensorboard = True
+            except ImportError:
+                logger.debug("Tensorboard not installed. Training will proceed without tensorboard logging.")
+                use_tensorboard = False
             
-            # Initialize trainer
-            trainer = trainer_class(
-                model=self.model,
-                args=training_args,
-                train_dataset=tokenized_dataset["train"],
-                eval_dataset=tokenized_dataset["test"],
-                data_collator=data_collator,
-                callbacks=[TrainingProgressCallback()]
-            )
+            spinner = ProgressSpinner("Loading model and preparing training environment...")
+            
+            try:
+                # Prepare dataset with progress bar
+                logger.info("\n1. Loading and Processing Dataset")
+                
+                # Tokenization spinner
+                spinner = ProgressSpinner("Tokenizing dataset...")
+                spinner.start()
+                tokenized_dataset = self.prepare_dataset()
+                spinner.stop("Dataset tokenized and processed")
 
-            # Start training
-            trainer.train()
-            logger.info("Training completed")
-            
-            # Save only the LoRA adapter weights
-            final_checkpoint_path = os.path.join(self.output_dir, "final_adapter")
-            self.model.save_pretrained(final_checkpoint_path, safe_serialization=True)
-            logger.info(f"Model saved to {final_checkpoint_path}")
-            
-            # Clean up intermediate checkpoints
-            for item in os.listdir(self.output_dir):
-                if item.startswith("checkpoint-"):
-                    shutil.rmtree(os.path.join(self.output_dir, item))
-                    logger.info(f"Cleaned up checkpoint: {item}")
-            
-            # Report size
-            adapter_size = sum(
-                os.path.getsize(os.path.join(final_checkpoint_path, f))
-                for f in os.listdir(final_checkpoint_path)
-            )
-            logger.info(f"Final adapter size: {adapter_size / (1024*1024):.2f} MB")
+                # Environment setup spinner
+                spinner = ProgressSpinner("Preparing training environment...")
+                spinner.start()
+                data_collator = DataCollatorForLanguageModeling(
+                    tokenizer=self.tokenizer,
+                    mlm=False
+                )
 
+                # Initialize trainer
+                trainer_class = self._get_optimized_trainer()
+                trainer = trainer_class(
+                    model=self.model,
+                    args=self._setup_training_arguments(use_tensorboard),
+                    train_dataset=tokenized_dataset["train"],
+                    eval_dataset=tokenized_dataset["test"],
+                    data_collator=data_collator,
+                    callbacks=[TrainingProgressCallback()]
+                )
+                spinner.stop("Training environment ready")
+
+                # Start training
+                logger.info("\n2. Starting Training Process")
+                trainer.train()
+                
+                # Save adapter
+                logger.info("\n3. Saving LoRA Adapter")
+                spinner.message = "Saving adapter weights..."
+                final_checkpoint_path = os.path.join(self.output_dir, "final_adapter")
+                self.model.save_pretrained(final_checkpoint_path, safe_serialization=True)
+                
+                # Clean up and report
+                for item in os.listdir(self.output_dir):
+                    if item.startswith("checkpoint-"):
+                        shutil.rmtree(os.path.join(self.output_dir, item))
+                
+                adapter_size = sum(
+                    os.path.getsize(os.path.join(final_checkpoint_path, f))
+                    for f in os.listdir(final_checkpoint_path)
+                )
+                spinner.stop(f"Adapter saved (Size: {adapter_size / (1024*1024):.2f} MB)")
+
+            except Exception as e:
+                spinner.stop(f"Error: {str(e)}")
+                raise
         except Exception as e:
-            logger.error(f"Training failed: {str(e)}")
+            spinner.stop(f"Error: {str(e)}")
             raise
