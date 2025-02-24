@@ -306,6 +306,11 @@ class Phi2LoRATrainer:
             dataset = None
             tokenized_dataset = None
             
+            # Create log directory if it doesn't exist
+            log_dir = os.path.join(self.output_dir, "logs")
+            os.makedirs(log_dir, exist_ok=True)
+            instructions_log = os.path.join(log_dir, "instructions-sent.log")
+            
             # Single progress instance for the entire pipeline
             with progress.task("Loading and processing dataset...") as p:
                 # Load dataset
@@ -320,6 +325,12 @@ class Phi2LoRATrainer:
                         self.format_instruction(p, r)
                         for p, r in zip(examples['prompt'], examples['response'])
                     ]
+                    
+                    # Log formatted instructions
+                    with open(instructions_log, 'a', encoding='utf-8') as f:
+                        for text in texts:
+                            f.write(f"\n\n{text}\n\n")
+                    
                     return self.tokenizer(
                         texts,
                         truncation=True,
