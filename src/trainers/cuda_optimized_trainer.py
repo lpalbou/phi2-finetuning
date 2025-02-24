@@ -2,7 +2,7 @@
 
 import logging
 import torch
-from torch.cuda.amp import autocast, GradScaler
+from torch.amp import autocast, GradScaler
 from torch.optim import AdamW
 from transformers import Trainer
 from typing import Dict, Any, Optional, Union, List, Tuple
@@ -38,7 +38,7 @@ class CUDAOptimizedTrainer(BaseOptimizedTrainer):
             **kwargs: Keyword arguments passed to the parent Trainer class
         """
         super().__init__(**kwargs)
-        self.scaler = GradScaler()
+        self.scaler = GradScaler('cuda')
         self._setup_cuda_optimized_training()
 
     def _setup_cuda_optimized_training(self) -> None:
@@ -129,7 +129,7 @@ class CUDAOptimizedTrainer(BaseOptimizedTrainer):
             )
 
         # Mixed precision training step
-        with autocast(device_type='cuda', dtype=torch.float16):
+        with autocast('cuda', dtype=torch.float16):
             with self.compute_loss_context_manager():
                 loss = self.compute_loss(model, inputs)
                 
@@ -173,7 +173,7 @@ class CUDAOptimizedTrainer(BaseOptimizedTrainer):
             
         except Exception as e:
             self.progress_bar.close()
-            raise e
+            raise
 
     def _save_checkpoint(
         self, 
@@ -227,7 +227,7 @@ class CUDAOptimizedTrainer(BaseOptimizedTrainer):
         if not torch.cuda.is_available():
             raise RuntimeError("CUDA device not available")
         torch.backends.cudnn.benchmark = True
-        self.scaler = GradScaler()
+        self.scaler = GradScaler('cuda')
         
     def _optimize_memory_allocation(self) -> None:
         torch.cuda.set_per_process_memory_fraction(0.95)
