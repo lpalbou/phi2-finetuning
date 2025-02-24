@@ -144,14 +144,16 @@ class Phi2LoRATrainer:
             # Only try 8-bit optimization on CUDA devices
             if device_type == "cuda":
                 try:
-                    import bitsandbytes
-                    if hasattr(bitsandbytes.cuda, 'cadam32bit_grad_fp32'):
+                    import bitsandbytes as bnb
+                    if hasattr(bnb, "nn") and hasattr(bnb.nn, "Linear8bitLt"):
                         logger.info("8-bit optimization is available")
                         load_kwargs["load_in_8bit"] = True
                     else:
-                        logger.info("8-bit optimization not available - using standard precision")
+                        logger.info("8-bit optimization not available in bitsandbytes - using standard precision")
                 except ImportError:
                     logger.info("bitsandbytes not installed - using standard precision")
+                except Exception as e:
+                    logger.warning(f"Error checking bitsandbytes: {str(e)} - using standard precision")
             else:
                 logger.info(f"Using standard precision for {device_type} device")
             

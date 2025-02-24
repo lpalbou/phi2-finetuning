@@ -23,4 +23,4 @@ mypy>=1.8.0  # Type checking
 pytest>=7.4.0  # Testing
 
 # Platform-specific dependencies
-bitsandbytes>=0.41.0; platform_system == "Linux" or platform_system == "Windows"  # CUDA support
+bitsandbytes>=0.41.1; platform_system == "Linux" or platform_system == "Windows"  # CUDA support
