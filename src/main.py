@@ -14,6 +14,7 @@ from src.utils.exceptions import (
     DeviceError,
     TrainingError
 )
+from src.utils.device_utils import detect_device
 
 
 # Configure logging
@@ -115,13 +116,20 @@ def validate_environment() -> None:
     """Validate the execution environment.
     
     Raises:
-        DeviceError: If MPS is not available
+        DeviceError: If no suitable device is available
     """
-    if not torch.backends.mps.is_available():
-        raise DeviceError(
-            "MPS not available. Ensure macOS 12.3+ and PyTorch MPS support"
-        )
-    logger.info("MPS (Metal Performance Shaders) is available")
+    device_type, device_str = detect_device()
+    
+    if device_type == "cuda":
+        if not torch.cuda.is_available():
+            raise DeviceError("CUDA device detected but not available")
+        logger.info(f"Using CUDA device: {torch.cuda.get_device_name()}")
+    elif device_type == "mps":
+        if not torch.backends.mps.is_available():
+            raise DeviceError("MPS not available. Ensure macOS 12.3+ and PyTorch MPS support")
+        logger.info("Using MPS (Metal Performance Shaders)")
+    else:
+        logger.warning("No GPU detected, using CPU. Training may be slow")
 
 def setup_training_config(args: argparse.Namespace) -> TrainingConfig:
     """Create training configuration from command line arguments.
