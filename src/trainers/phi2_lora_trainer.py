@@ -20,6 +20,7 @@ from ..utils.exceptions import DatasetValidationError, ModelPreparationError, De
 from .mps_optimized_trainer import MPSOptimizedTrainer
 from ..callbacks.training_progress_callback import TrainingProgressCallback
 from .base_optimized_trainer import BaseOptimizedTrainer
+from ..utils.device_utils import detect_device
 
 # Configure logging
 logging.basicConfig(
@@ -89,6 +90,11 @@ class Phi2LoRATrainer:
         self.output_dir = output_dir
         self.dataset_path = dataset_path
         self.config = config or TrainingConfig()
+        
+        # Detect device first
+        self.device_type, self.device = detect_device()
+        logger.info(f"Using device type: {self.device_type}")
+
         self._setup_model_and_tokenizer()
 
     def _get_model_specific_config(self) -> Dict[str, Any]:
@@ -111,14 +117,6 @@ class Phi2LoRATrainer:
     def _setup_model_and_tokenizer(self) -> None:
         """Initialize model and tokenizer with MPS-optimized settings."""
         try:
-            # Check MPS availability
-            if not torch.backends.mps.is_available():
-                logger.warning("MPS not available. Falling back to CPU. This will be slow!")
-                self.device = torch.device("cpu")
-            else:
-                self.device = torch.device("mps")
-                logger.info("Using MPS (Metal Performance Shaders) for acceleration")
-
             # Initialize tokenizer
             logger.info(f"Loading tokenizer for model: {self.model_name}")
             self.tokenizer = AutoTokenizer.from_pretrained(
@@ -334,10 +332,10 @@ class Phi2LoRATrainer:
 
     def _get_optimized_trainer(self) -> Type[BaseOptimizedTrainer]:
         """Get the appropriate optimized trainer for the current device."""
-        if torch.cuda.is_available():
+        if self.device_type == "cuda":
             from .cuda_optimized_trainer import CUDAOptimizedTrainer
             return CUDAOptimizedTrainer
-        elif torch.backends.mps.is_available():
+        elif self.device_type == "mps":
             from .mps_optimized_trainer import MPSOptimizedTrainer
             return MPSOptimizedTrainer
         else:
