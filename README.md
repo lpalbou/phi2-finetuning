@@ -247,15 +247,6 @@ Note: For M3 MacBooks, remember to:
 --batch_size 2 --gradient_accumulation_steps 32 --max_length 768 --gradient_checkpointing
 ```
 
-## Results
-
-The fine-tuned model produces:
-- More engaging explanations
-- Humorous analogies
-- Relatable examples
-- Casual, conversational tone
-While maintaining technical accuracy.
-
 ## License
 
 MIT License - see LICENSE file for details
