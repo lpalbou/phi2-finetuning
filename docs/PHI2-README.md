@@ -51,12 +51,12 @@ Different tasks require tuning different layers. Below is a guide to help select
 | **Handling Multiple Personas** (AI character switching) | `q_proj`, `k_proj`, `v_proj`, `dense`, `lm_head` | Maintains personality consistency |
 
 ## 4️⃣ Understanding Layer Naming and Mnemonics
-If you're trying to **memorize what each layer does**, here’s a trick:
+If you're trying to **memorize what each layer does**, here's a trick:
 
 | **Layer Name** | **Mnemonic Trick** |
 |--------------|---------------------|
 | `q_proj` (Query Projection) | Think of a **search engine query** – "What do I need?" |
-| `k_proj` (Key Projection) | Think of **keywords in a database** – "What’s available?" |
+| `k_proj` (Key Projection) | Think of **keywords in a database** – "What's available?" |
 | `v_proj` (Value Projection) | Think of **retrieving document content** – "What do I get?" |
 | `dense` | Think of a **refinery** – "Processing the raw attention output" |
 | `mlp.fc1` | Think of **step 1 in a factory** – "Transforming features" |

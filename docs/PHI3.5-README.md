@@ -5,7 +5,7 @@
 ### Available model layers
 2025-02-22 22:34:06,516 - INFO - Available model layers:
 2025-02-22 22:34:06,516 - INFO -   - model.layers.0.self_attn.o_proj
-2025-02-22 22:34:06,517 - INFO -   - model.layers.0.self_attn.qkv_proj
+2025-02-22 22:34:06,516 - INFO -   - model.layers.0.self_attn.qkv_proj
 2025-02-22 22:34:06,517 - INFO -   - model.layers.0.mlp
 2025-02-22 22:34:06,517 - INFO -   - model.layers.0.mlp.gate_up_proj
 2025-02-22 22:34:06,517 - INFO -   - model.layers.0.mlp.down_proj
@@ -109,7 +109,7 @@
 2025-02-22 22:34:06,522 - INFO -   - model.layers.12.resid_mlp_dropout
 2025-02-22 22:34:06,522 - INFO -   - model.layers.12.post_attention_layernorm
 2025-02-22 22:34:06,522 - INFO -   - model.layers.13.self_attn.o_proj
-2025-02-22 22:34:06,522 - INFO -   - model.layers.13.self_attn.qkv_proj
+2025-02-22 22:34:06,523 - INFO -   - model.layers.13.self_attn.qkv_proj
 2025-02-22 22:34:06,523 - INFO -   - model.layers.13.mlp
 2025-02-22 22:34:06,523 - INFO -   - model.layers.13.mlp.gate_up_proj
 2025-02-22 22:34:06,523 - INFO -   - model.layers.13.mlp.down_proj
@@ -266,3 +266,20 @@
 Looking at the model's layer structure, we can see a clear pattern of transformer blocks (numbered from 0 to 31) where each block contains two main components: self_attn and mlp. The attention mechanism in each layer has two key components: qkv_proj (for query, key, value projections combined) and o_proj (output projection). The MLP section contains gate_up_proj (for upscaling) and down_proj (for downscaling) which are crucial for the model's processing capabilities.
 For LoRA fine-tuning, we want to target the layers that have the most impact on the model's behavior while keeping the parameter count manageable. The attention mechanism (particularly the qkv_proj and o_proj) is crucial as it determines how the model attends to different parts of the input, while the MLP projections (gate_up_proj and down_proj) are important for the model's processing and transformation capabilities. These layers are the most influential in shaping the model's outputs and are typically the primary targets for efficient fine-tuning.
 Based on this analysis, we should update our target modules to: ["self_attn.qkv_proj", "self_attn.o_proj", "mlp.gate_up_proj", "mlp.down_proj"]. This selection captures both the attention mechanism and the MLP transformations, allowing us to influence both how the model attends to information and how it processes that information, while maintaining the model's basic architecture and capabilities. This is particularly important because these layers are present across all transformer blocks and are key to the model's understanding and generation capabilities.
+
+### Fine-tuning Recommendations
+To effectively fine-tune the model, consider the following strategies:
+1. **Learning Rate Adjustment**: Start with a low learning rate and gradually increase it over time.
+2. **Gradient Clipping**: Use gradient clipping to prevent exploding gradients.
+3. **Regularization Techniques**: Apply dropout, weight decay, or other regularization methods.
+4. **Data Augmentation**: Augment your training data with variations to improve model robustness.
+5. **Early Stopping**: Monitor the validation loss and stop training when it starts to increase.
+
+### Comparison with Phi-2
+While Phi-3.5 and Phi-2 share some similarities in their architecture, there are notable differences:
+1. **Layer Count**: Phi-3.5 has more layers (32 vs 12) which can lead to a more complex model.
+2. **Attention Mechanism**: The attention mechanism in Phi-3.5 is more complex, with each layer having two separate attention mechanisms (qkv_proj and o_proj).
+3. **MLP Structure**: The MLP section in Phi-3.5 has a more complex structure compared to Phi-2.
+4. **Parameter Count**: Phi-3.5 has more parameters than Phi-2, which can lead to better performance but also requires more computational resources.
+
+These differences should be considered when fine-tuning the model.

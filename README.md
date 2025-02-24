@@ -235,7 +235,7 @@ Note: For M3 MacBooks, remember to:
 
 ## 🔬 Understanding Model Layers
 
-The Phi-2 model consists of multiple transformer layers that can be selectively fine-tuned. Understanding these layers is crucial for effective training. See our [detailed layer guide](src/trainers/PHI2-README.md) for:
+The Phi-2 model consists of multiple transformer layers that can be selectively fine-tuned. Understanding these layers is crucial for effective training. See our [detailed layer guide](docs/PHI2-README.md) for:
 
 - Layer-by-layer explanation
 - Fine-tuning recommendations
@@ -244,8 +244,8 @@ The Phi-2 model consists of multiple transformer layers that can be selectively 
 
 ## 📚 Additional Resources
 
-- [PHI2 Layer Guide](src/trainers/PHI2-README.md) - Detailed explanation of model layers
-- [Training Guide](docs/training.md) - In-depth training documentation
+- [PHI2 Layer Guide](docs/PHI2-README.md) - Detailed explanation of model layers
+- [Training Guide](Training-README.md) - In-depth training documentation
 - [Examples](examples/) - Sample datasets and configurations
 
 ## 🤝 Contributing
