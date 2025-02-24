@@ -378,7 +378,7 @@ class Phi2LoRATrainer:
                     mlm=False
                 )
 
-                # Initialize trainer
+                # Initialize trainer with label names
                 trainer_class = self._get_optimized_trainer()
                 trainer = trainer_class(
                     model=self.model,
@@ -386,7 +386,8 @@ class Phi2LoRATrainer:
                     train_dataset=tokenized_dataset["train"],
                     eval_dataset=tokenized_dataset["test"],
                     data_collator=data_collator,
-                    callbacks=[TrainingProgressCallback()]
+                    callbacks=[TrainingProgressCallback()],
+                    label_names=["labels"]
                 )
                 spinner.stop("Training environment ready")
 
