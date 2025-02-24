@@ -28,6 +28,7 @@ It is designed to work both on MacBook Pro M3 and CUDA-enabled GPUs.
 5. If multiple implementations exist, compare them before suggesting changes
 
 # ERROR FIXING PROCESS
+- ALWAYS CHECK THE DOCUMENTATION of libraries and packages to ensure proper usage and best practices
 - NEVER use shortcuts or be lazy, ALWAYS try to understand the root cause of the problem and the best solution
 - NEVER DO WORKAROUNDS, ALWAYS FIX THE ROOT CAUSE
 - Always start from a high-level overview of the problem

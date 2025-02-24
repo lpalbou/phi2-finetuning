@@ -28,11 +28,14 @@ class TrainingProgressCallback(TrainerCallback):
     """
 
     def __init__(self):
+        """Initialize callback with trainer reference storage."""
+        super().__init__()
         self.start_time = None
         self.epoch_start_time = None
         self.total_steps = 0
         self.current_phase = None
-        self.spinner = None  # Will be initialized in on_train_begin
+        self.spinner = None
+        self._trainer = None  # Store trainer reference
         
     def _get_memory_info(self) -> str:
         """Get memory usage based on device type."""
@@ -50,6 +53,7 @@ class TrainingProgressCallback(TrainerCallback):
 
     def on_train_begin(self, args, state, control, **kwargs):
         """Called at the beginning of training."""
+        self._trainer = kwargs.get('trainer')  # Store trainer reference
         self.start_time = time.time()
         self.total_steps = state.max_steps
         
@@ -71,15 +75,13 @@ class TrainingProgressCallback(TrainerCallback):
     def on_step_end(self, args, state, control, **kwargs):
         """Called at the end of each step."""
         if state.global_step % args.logging_steps == 0:
-            # Update spinner message with current epoch and memory info
             current_epoch = int(state.epoch)
             mem_info = self._get_memory_info()
             
-            # Get loss from trainer's current_loss attribute
-            trainer = self.trainer  # Trainer instance is automatically set by HF
+            # Get loss from trainer
             current_loss = "N/A"
-            if hasattr(trainer, 'current_loss'):
-                loss_tensor = getattr(trainer, 'current_loss')
+            if self._trainer and hasattr(self._trainer, 'current_loss'):
+                loss_tensor = self._trainer.current_loss
                 if isinstance(loss_tensor, torch.Tensor):
                     current_loss = f"{loss_tensor.item():.4f}"
             
