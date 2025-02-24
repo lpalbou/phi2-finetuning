@@ -423,7 +423,7 @@ class Phi2LoRATrainer:
             # Save adapter
             logger.info("\n3. Saving LoRA Adapter")
             final_checkpoint_path = os.path.join(self.output_dir, "final_adapter")
-            self.model.save_pretrained(final_checkpoint_path, safe_serialization=True)
+            self.model.save_pretrained(final_checkpoint_path, safe_serialization=True, save_embedding_layers=True)
             
             # Clean up and report
             for item in os.listdir(self.output_dir):

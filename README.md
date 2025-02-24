@@ -1,40 +1,61 @@
 # Phi-2 Fine-tuning
 
-This project fine-tunes Microsoft's Phi-2 language model based on a .jsonl file with 'prompt' and 'response' pairs. The fine-tuning process preserves the base model while creating a small adapter that enhances the model's ability based on the provided dataset.
+This project provides a comprehensive toolkit for fine-tuning Microsoft's Phi-2 and Phi-3.5 language models. It includes training capabilities, interactive chat, and model comparison tools.
 
-## Features
+## 🌟 Features
 
-- Fine-tune Phi-2 with LoRA for provided dataset
-- Memory-efficient training optimized for Apple Silicon (MPS) and CUDA (GPU)
-- Minimal disk space requirements (adapter is ~20MB vs. full model ~2.7GB)
+- **Fine-tuning with LoRA**
+  - Memory-efficient training optimized for Apple Silicon (MPS) and CUDA
+  - Small adapter files (~20MB vs full model ~2.7GB)
+  - Detailed layer control ([see PHI2 Layer Guide](src/trainers/PHI2-README.md))
 
-## Requirements
+- **Interactive Tools**
+  - `dialogue.py`: Chat with base or fine-tuned models
+  - `compare_models.py`: Compare base vs fine-tuned responses
+  - `main.py`: Train and create LoRA adapters
+
+## 📋 Requirements
 
 - macOS 12.3+ with Apple Silicon OR Linux with CUDA
 - Python 3.9+
-- PyTorch 2.2.0+ with MPS support OR PyTorch 2.2.0+ with CUDA support
+- PyTorch 2.2.0+ (with MPS or CUDA support)
 - ~21GB available memory for model comparison
 
-## Installation
+## 🚀 Quick Start
 
-1. Clone the repository:
+1. **Installation**
 ```bash
 git clone [your-repo-url]
 cd phi2-finetuning
-```
-
-2. Create and activate a virtual environment:
-```bash
 python -m venv .venv
 source .venv/bin/activate  # On Unix/macOS
-```
-
-3. Install dependencies:
-```bash
 pip install -r requirements.txt
 ```
 
-## Project Structure
+2. **Fine-tune a Model**
+```bash
+python src/main.py \
+    --output_dir ./output/my_model \
+    --dataset_path ./data/my_dataset.jsonl \
+    --batch_size 4 \
+    --epochs 20
+```
+
+3. **Chat with Models**
+```bash
+# Use base model
+python src/dialogue.py
+
+# Use fine-tuned model
+python src/dialogue.py --adapter_path output/my_model/final_adapter
+```
+
+4. **Compare Models**
+```bash
+python src/compare_models.py --adapter_path output/my_model/final_adapter
+```
+
+## 📁 Project Structure
 
 ```
 .
@@ -43,47 +64,31 @@ pip install -r requirements.txt
 │   ├── trainers/         # Training implementations
 │   ├── callbacks/        # Training callbacks
 │   ├── utils/           # Utility functions
-│   └── main.py          # Training entry point
-├── data/
-│   └── humorous_responses.jsonl  # Training dataset
-├── compare_models.py    # Model comparison script
-└── requirements.txt
+│   ├── main.py          # Training entry point
+│   ├── dialogue.py      # Interactive chat
+│   └── compare_models.py # Model comparison
+├── data/                # Training datasets
+└── docs/               # Additional documentation
 ```
 
-## Usage
+## 🛠️ Tools Guide
 
-### Fine-tuning the Model
+### Training (main.py)
+The primary tool for fine-tuning models. Creates LoRA adapters that modify specific model layers for your use case. [See detailed layer guide](src/trainers/PHI2-README.md).
 
-1. Prepare your JSONL dataset with 'prompt' and 'response' pairs:
-```json
-{"prompt": "What is Python?", "response": "Well, hold onto your keyboards, folks! Python isn't just a snake..."}
-```
+### Chat (dialogue.py)
+Interactive chat interface that can use:
+- Base model (Phi-2 or others)
+- Fine-tuned model (base + LoRA adapter)
+- Custom prompts and parameters
 
-2. Run the training script:
-```bash
-python src/main.py \
-    --output_dir ./output \
-    --dataset_path ./data/humorous_responses.jsonl \
-    --batch_size 1 \
-    --epochs 3 \
-    --learning_rate 2e-4 \
-    --gradient_accumulation_steps 32
-```
+### Compare (compare_models.py)
+Side-by-side comparison tool to evaluate fine-tuning effects:
+- Interactive REPL mode for live testing
+- Batch mode with YAML question files
+- Visual output with colored responses
 
-
-### Fine-tuning Process
-1. The original Phi-2 model remains unchanged
-2. LoRA adapter (eg. ~20MB) contains weight adjustments
-3. Fine-tuning focuses on dataset provided
-4. Memory-efficient training with gradient checkpointing
-
-### LoRA Adaptation
-- Creates small rank decomposition matrices
-- Trains only specific layers (attention)
-- Minimal storage requirements
-- Quick to apply and remove
-
-## Training Parameters Guide
+## 🎯 Training Parameters Guide
 
 ### Core Parameters
 
@@ -228,11 +233,22 @@ Note: For M3 MacBooks, remember to:
 --batch_size 2 --gradient_accumulation_steps 32 --max_length 768 --gradient_checkpointing
 ```
 
-## License
+## 🔬 Understanding Model Layers
 
-MIT License - see LICENSE file for details
+The Phi-2 model consists of multiple transformer layers that can be selectively fine-tuned. Understanding these layers is crucial for effective training. See our [detailed layer guide](src/trainers/PHI2-README.md) for:
 
-## Contributing
+- Layer-by-layer explanation
+- Fine-tuning recommendations
+- Task-specific layer selection
+- Comparison with other models
+
+## 📚 Additional Resources
+
+- [PHI2 Layer Guide](src/trainers/PHI2-README.md) - Detailed explanation of model layers
+- [Training Guide](docs/training.md) - In-depth training documentation
+- [Examples](examples/) - Sample datasets and configurations
+
+## 🤝 Contributing
 
 1. Fork the repository
 2. Create your feature branch
@@ -240,12 +256,12 @@ MIT License - see LICENSE file for details
 4. Push to the branch
 5. Open a Pull Request
 
-## Acknowledgments
+## 📜 License
+
+[MIT License](LICENSE) - see [LICENSE](LICENSE) file for details
+
+## 🙏 Acknowledgments
 
 - Microsoft for the Phi-2 model
 - Hugging Face for the transformers library
 - PEFT library for LoRA implementation
-
-## A few examples
-
-TBD
