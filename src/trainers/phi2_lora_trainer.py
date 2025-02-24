@@ -288,7 +288,10 @@ class Phi2LoRATrainer:
         Returns:
             str: Formatted instruction
         """
-        return f"Instruct: {prompt}.\nOutput: {response}\n"
+        prompt = prompt.strip()
+        if not prompt.endswith('?'):
+            prompt += '?'
+        return f"Instruct: {prompt}\nOutput: {response}\n"
 
     def prepare_dataset(self) -> DatasetDict:
         """Prepare and tokenize the dataset with progress bar."""

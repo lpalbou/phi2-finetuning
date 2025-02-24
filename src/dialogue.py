@@ -81,8 +81,11 @@ class ModelDialogue:
         Returns:
             str: Generated response
         """
+        prompt = prompt.strip()
+        if not prompt.endswith('?'):
+            prompt += '?'
         # Format the prompt
-        formatted_prompt = f"Instruct: {prompt}.\nOutput: "
+        formatted_prompt = f"Instruct: {prompt}\nOutput: "
         
         # Tokenize
         inputs = self.tokenizer(

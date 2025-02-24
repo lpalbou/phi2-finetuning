@@ -62,7 +62,10 @@ class ModelComparator:
         model = self.lora_model if use_lora else self.base_model
         
         # Use the same format as dialogue.py
-        formatted_prompt = f"Instruct: {question}.\nOutput: "
+        question = question.strip()
+        if not question.endswith('?'):
+            question += '?'        
+        formatted_prompt = f"Instruct: {question}\nOutput: "
 
         inputs = self.tokenizer(formatted_prompt, return_tensors="pt").to(self.device)
         
