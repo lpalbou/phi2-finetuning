@@ -67,13 +67,13 @@ def setup_arg_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--max_length",
         type=int,
-        default=2048,
+        default=1024,
         help="Maximum sequence length"
     )
     parser.add_argument(
         "--gradient_accumulation_steps",
         type=int,
-        default=8,
+        default=16,
         help="Number of gradient accumulation steps"
     )
     parser.add_argument(
@@ -85,7 +85,7 @@ def setup_arg_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--lora_r",
         type=int,
-        default=16,
+        default=8,
         help="LoRA attention dimension"
     )
     parser.add_argument(
@@ -110,6 +110,18 @@ def setup_arg_parser() -> argparse.ArgumentParser:
         type=str,
         default="microsoft/phi-2",
         help="Name/path of the model to use (default: microsoft/phi-2)"
+    )
+    parser.add_argument(
+        "--gradient_checkpointing",
+        action="store_true",
+        default=True,
+        help="Enable gradient checkpointing to save memory"
+    )
+    parser.add_argument(
+        "--torch_compile",
+        action="store_true",
+        default=True,
+        help="Enable torch.compile for optimization"
     )
     return parser
 
