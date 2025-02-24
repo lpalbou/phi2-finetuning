@@ -63,7 +63,23 @@ class TrainingProgressCallback(TrainerCallback):
             "Evaluation",
             "Saving Adapters"
         ]
+        # Detect device type once at initialization
+        self.device_type = "cuda" if torch.cuda.is_available() else "mps" if torch.backends.mps.is_available() else "cpu"
         
+    def _get_memory_info(self) -> str:
+        """Get memory usage based on device type."""
+        try:
+            if self.device_type == "cuda":
+                allocated = torch.cuda.memory_allocated() / (1024**2)
+                return f"GPU Memory: {allocated:.2f} MB"
+            elif self.device_type == "mps":
+                allocated = torch.mps.current_allocated_memory() / (1024**2)
+                return f"MPS Memory: {allocated:.2f} MB"
+            else:
+                return "Memory: N/A (CPU)"
+        except Exception:
+            return "Memory: N/A"
+
     def on_train_begin(
         self,
         args: TrainingArguments,
@@ -108,13 +124,16 @@ class TrainingProgressCallback(TrainerCallback):
     ) -> None:
         """Called at the end of each step."""
         if state.global_step % args.logging_steps == 0:
-            # Calculate progress and timing
-            elapsed_time = time.time() - self.start_time
-            steps_per_second = state.global_step / elapsed_time if elapsed_time > 0 else 0
+            # Calculate progress metrics
+            current_time = time.time()
+            if self.start_time is None:
+                self.start_time = current_time
+            
+            elapsed = current_time - self.start_time
+            steps_per_second = state.global_step / elapsed if elapsed > 0 else 0
             remaining_steps = self.total_steps - state.global_step
             eta = remaining_steps / steps_per_second if steps_per_second > 0 else 0
             
-            # Get current loss
             current_loss = self._get_current_loss(state)
             loss_info = f"Loss: {current_loss:.4f}" if current_loss is not None else "Loss: N/A"
             
@@ -129,7 +148,7 @@ class TrainingProgressCallback(TrainerCallback):
             # Detailed metrics at DEBUG level
             logger.debug(
                 f"Epoch: {state.epoch:.2f} | "
-                f"Memory: {torch.mps.current_allocated_memory() / 1024**2:.2f} MB"
+                f"{self._get_memory_info()}"
             )
 
     def on_epoch_begin(
