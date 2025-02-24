@@ -120,30 +120,36 @@ class Phi2LoRATrainer:
             )
 
     def _setup_model_and_tokenizer(self) -> None:
-        """Initialize model and tokenizer."""
+        """Initialize model and tokenizer with Phi-3.5 specific changes."""
         try:
-            # Initialize tokenizer
+            # Initialize tokenizer with Phi-3.5 specific settings
             logger.info(f"Loading tokenizer for model: {self.model_name}")
             self.tokenizer = AutoTokenizer.from_pretrained(
                 self.model_name,
                 trust_remote_code=True,
                 padding_side="right"
             )
-            self.tokenizer.pad_token = self.tokenizer.eos_token
             
-            # Use our device detection utility
-            device_type, _ = detect_device()
+            # Phi-3.5 specific tokenizer setup
+            if "Phi-3.5" in self.model_name:
+                # Add specific handling for Phi-3.5 tokenizer
+                self.tokenizer.pad_token = self.tokenizer.eos_token
+                self.tokenizer.padding_side = "left"  # Phi-3.5 prefers left padding
+            else:
+                self.tokenizer.pad_token = self.tokenizer.eos_token
             
-            # Load model with standard settings
+            # Load model with appropriate dtype
             logger.info(f"Loading model: {self.model_name}")
+            model_dtype = torch.bfloat16 if "Phi-3.5" in self.model_name else torch.float32
+            
             self.model = AutoModelForCausalLM.from_pretrained(
                 self.model_name,
-                torch_dtype=torch.float32,
+                torch_dtype=model_dtype,
                 device_map=None,
                 trust_remote_code=True
             ).to(self.device)
 
-            # Enable gradient checkpointing for memory efficiency
+            # Enable gradient checkpointing
             self.model.gradient_checkpointing_enable()
             logger.info("Gradient checkpointing enabled")
             
@@ -202,23 +208,36 @@ class Phi2LoRATrainer:
     def prepare_model(self) -> None:
         """Prepare model with LoRA configuration."""
         try:
-            if torch.backends.mps.is_available():
-                logger.info(
-                    f"Memory allocated: {torch.mps.current_allocated_memory() / 1024**2:.2f} MB"
+            # Phi-3.5 specific memory optimizations
+            if "Phi-3.5" in self.model_name:
+                # Use 8-bit quantization for Phi-3.5
+                from bitsandbytes.nn import Linear8bitLt
+                
+                # Configure PEFT model with 8-bit quantization
+                peft_config = LoraConfig(
+                    r=self.config.lora_r,
+                    lora_alpha=self.config.lora_alpha,
+                    lora_dropout=self.config.lora_dropout,
+                    bias="none",
+                    task_type=TaskType.CAUSAL_LM,
+                    target_modules=self._get_model_specific_config()["target_modules"],
+                    inference_mode=False,
+                    modules_to_save=['label_names'],
+                    load_in_8bit=True,
+                    quantization_config={"load_in_8bit": True}
                 )
-            
-            # Configure PEFT model with task-specific settings
-            peft_config = LoraConfig(
-                r=self.config.lora_r,
-                lora_alpha=self.config.lora_alpha,
-                lora_dropout=self.config.lora_dropout,
-                bias="none",
-                task_type=TaskType.CAUSAL_LM,
-                target_modules=self._get_model_specific_config()["target_modules"],
-                inference_mode=False,
-                # Add this to preserve model attributes
-                modules_to_save=['label_names']
-            )
+            else:
+                # Original Phi-2 configuration
+                peft_config = LoraConfig(
+                    r=self.config.lora_r,
+                    lora_alpha=self.config.lora_alpha,
+                    lora_dropout=self.config.lora_dropout,
+                    bias="none",
+                    task_type=TaskType.CAUSAL_LM,
+                    target_modules=self._get_model_specific_config()["target_modules"],
+                    inference_mode=False,
+                    modules_to_save=['label_names']
+                )
             
             # Prepare PEFT model
             self.model = get_peft_model(self.model, peft_config)
@@ -246,9 +265,8 @@ class Phi2LoRATrainer:
         except Exception as e:
             raise ModelPreparationError(f"Error preparing model: {str(e)}")
 
-    @staticmethod
-    def format_instruction(prompt: str, response: str) -> str:
-        """Format the instruction template.
+    def format_instruction(self, prompt: str, response: str) -> str:
+        """Format the instruction template for both Phi-2 and Phi-3.5.
         
         Args:
             prompt: Input prompt
@@ -257,14 +275,22 @@ class Phi2LoRATrainer:
         Returns:
             str: Formatted instruction
         """
-        return (
-            "Below is an instruction that describes a task. Write a response that "
-            "completes the request in a humorous and engaging way.\n\n"
-            "### Instruction:\n"
-            f"{prompt}\n\n"
-            "### Response:\n"
-            f"{response}\n"
-        )
+        if "Phi-3.5" in self.model_name:
+            # Phi-3.5 specific format
+            return (
+                "Instruct: {prompt}\n\n"
+                "Output: {response}\n"
+            ).format(prompt=prompt, response=response)
+        else:
+            # Original Phi-2 format
+            return (
+                "Below is an instruction that describes a task. Write a response that "
+                "completes the request in a humorous and engaging way.\n\n"
+                "### Instruction:\n"
+                f"{prompt}\n\n"
+                "### Response:\n"
+                f"{response}\n"
+            )
 
     def prepare_dataset(self) -> DatasetDict:
         """Prepare and tokenize the dataset with progress bar."""
