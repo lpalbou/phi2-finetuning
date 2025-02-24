@@ -21,6 +21,3 @@ isort>=5.13.0  # Import sorting
 flake8>=7.0.0  # Code linting
 mypy>=1.8.0  # Type checking
 pytest>=7.4.0  # Testing
-
-# Platform-specific dependencies
-bitsandbytes>=0.41.1,<0.42.0; platform_system == "Linux" or platform_system == "Windows"  # CUDA support

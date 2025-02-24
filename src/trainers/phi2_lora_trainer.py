@@ -10,8 +10,7 @@ from transformers import (
     AutoModelForCausalLM,
     AutoTokenizer,
     TrainingArguments,
-    DataCollatorForLanguageModeling,
-    BitsAndBytesConfig
+    DataCollatorForLanguageModeling
 )
 from peft import LoraConfig, get_peft_model, TaskType
 from tqdm.auto import tqdm
@@ -120,7 +119,7 @@ class Phi2LoRATrainer:
             )
 
     def _setup_model_and_tokenizer(self) -> None:
-        """Initialize model and tokenizer with MPS-optimized settings."""
+        """Initialize model and tokenizer."""
         try:
             # Initialize tokenizer
             logger.info(f"Loading tokenizer for model: {self.model_name}")
@@ -134,48 +133,14 @@ class Phi2LoRATrainer:
             # Use our device detection utility
             device_type, _ = detect_device()
             
-            # Base loading arguments
-            load_kwargs = {
-                "trust_remote_code": True,
-                "torch_dtype": torch.float32,
-            }
-
-            # Configure quantization for CUDA devices
-            if device_type == "cuda":
-                try:
-                    import bitsandbytes as bnb
-                    if hasattr(bnb, "nn") and hasattr(bnb.nn, "Linear8bitLt"):
-                        logger.info("Configuring 8-bit quantization")
-                        load_kwargs["quantization_config"] = BitsAndBytesConfig(
-                            load_in_8bit=True,
-                            llm_int8_enable_fp32_cpu_offload=True
-                        )
-                        # Don't set device_map to None when using quantization
-                        load_kwargs["device_map"] = "auto"
-                    else:
-                        logger.info("8-bit quantization not available - using standard precision")
-                        load_kwargs["device_map"] = None
-                except ImportError:
-                    logger.info("bitsandbytes not installed - using standard precision")
-                    load_kwargs["device_map"] = None
-                except Exception as e:
-                    logger.warning(f"Error configuring quantization: {str(e)} - using standard precision")
-                    load_kwargs["device_map"] = None
-            else:
-                logger.info(f"Using standard precision for {device_type} device")
-                load_kwargs["device_map"] = None
-            
-            # Load the model
-            logger.info(f"Loading model with config: {load_kwargs}")
+            # Load model with standard settings
+            logger.info(f"Loading model: {self.model_name}")
             self.model = AutoModelForCausalLM.from_pretrained(
                 self.model_name,
-                **load_kwargs
-            )
-
-            # Only move to device if not using quantization
-            if not load_kwargs.get("quantization_config"):
-                self.model = self.model.to(self.device)
-                logger.info(f"Model moved to device: {self.device}")
+                torch_dtype=torch.float32,
+                device_map=None,
+                trust_remote_code=True
+            ).to(self.device)
 
             # Enable gradient checkpointing for memory efficiency
             self.model.gradient_checkpointing_enable()
