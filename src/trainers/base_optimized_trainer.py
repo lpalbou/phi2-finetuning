@@ -6,6 +6,8 @@ import torch
 from transformers import Trainer
 from typing import Dict, Any, Optional, Union, Tuple
 from tqdm.auto import tqdm
+import os
+import contextlib
 
 logger = logging.getLogger(__name__)
 
@@ -99,3 +101,15 @@ class BaseOptimizedTrainer(Trainer, ABC):
         except Exception as e:
             self.progress_bar.close()
             raise e 
+
+    def log(self, logs: Dict[str, float], start_time: Optional[float] = None) -> None:
+        """Override logging to prevent JSON output."""
+        # Add memory metrics to logs but don't print them
+        if torch.cuda.is_available():
+            logs["cuda_memory_allocated"] = torch.cuda.memory_allocated() / 1e9
+            logs["cuda_memory_reserved"] = torch.cuda.memory_reserved() / 1e9
+        
+        # Call parent's log but suppress output
+        with open(os.devnull, 'w') as f:
+            with contextlib.redirect_stdout(f):
+                super().log(logs, start_time) 

@@ -91,13 +91,20 @@ class TrainingProgressCallback(TrainerCallback):
         self.start_time = time.time()
         self.total_steps = state.max_steps
         
-        logger.info("\n=== Training Pipeline Started ===")
-        logger.info("Total epochs: %d", args.num_train_epochs)
-        logger.info("Training steps per epoch: %d", state.max_steps // args.num_train_epochs)
-        logger.info("Batch size: %d", args.per_device_train_batch_size)
+        # Print initial training parameters once
+        logger.info("\n=== Training Parameters ===")
+        logger.info(f"Number of examples: {len(state.train_dataloader)}")
+        logger.info(f"Number of Epochs: {args.num_train_epochs}")
+        logger.info(f"Batch size per device: {args.per_device_train_batch_size}")
+        logger.info(f"Total batch size: {args.per_device_train_batch_size * args.gradient_accumulation_steps}")
+        logger.info(f"Gradient Accumulation steps: {args.gradient_accumulation_steps}")
+        logger.info(f"Total optimization steps: {state.max_steps}")
         
-        if torch.backends.mps.is_available():
-            logger.debug(f"Initial MPS Memory: {torch.mps.current_allocated_memory() / 1024**2:.2f} MB")
+        # Initialize progress spinner
+        self.spinner = ProgressSpinner(
+            f"Training - Epoch 0/{int(args.num_train_epochs)}"
+        )
+        self.spinner.start()
 
     def _get_current_loss(self, state: Dict[str, Any]) -> Optional[float]:
         """Safely get the current loss value.
@@ -124,31 +131,12 @@ class TrainingProgressCallback(TrainerCallback):
     ) -> None:
         """Called at the end of each step."""
         if state.global_step % args.logging_steps == 0:
-            # Calculate progress metrics
-            current_time = time.time()
-            if self.start_time is None:
-                self.start_time = current_time
-            
-            elapsed = current_time - self.start_time
-            steps_per_second = state.global_step / elapsed if elapsed > 0 else 0
-            remaining_steps = self.total_steps - state.global_step
-            eta = remaining_steps / steps_per_second if steps_per_second > 0 else 0
-            
-            current_loss = self._get_current_loss(state)
-            loss_info = f"Loss: {current_loss:.4f}" if current_loss is not None else "Loss: N/A"
-            
-            # Basic progress info
-            logger.info(
-                f"Step [{state.global_step}/{self.total_steps}] | "
-                f"{loss_info} | "
-                f"Speed: {steps_per_second:.1f} steps/s | "
-                f"ETA: {eta/60:.1f}m"
-            )
-            
-            # Detailed metrics at DEBUG level
-            logger.debug(
-                f"Epoch: {state.epoch:.2f} | "
-                f"{self._get_memory_info()}"
+            # Update spinner message with current epoch and memory info
+            current_epoch = int(state.epoch)
+            mem_info = self._get_memory_info()
+            self.spinner.message = (
+                f"Training - Epoch {current_epoch}/{int(args.num_train_epochs)} | "
+                f"{mem_info} | Loss: {state.log_history[-1].get('loss', 'N/A'):.4f}"
             )
 
     def on_epoch_begin(
@@ -170,13 +158,10 @@ class TrainingProgressCallback(TrainerCallback):
         **kwargs
     ) -> None:
         """Called at the end of each epoch."""
-        epoch_time = time.time() - self.epoch_start_time
-        eval_loss = self._get_current_loss(state)
-        
-        logger.info(
-            f"Completed Epoch {int(state.epoch)}/{int(args.num_train_epochs)} "
-            f"in {epoch_time/60:.1f}m | "
-            f"Loss: {eval_loss:.4f}" if eval_loss is not None else "N/A"
+        current_epoch = int(state.epoch)
+        self.spinner.message = (
+            f"Completed Epoch {current_epoch}/{int(args.num_train_epochs)} | "
+            f"{self._get_memory_info()}"
         )
 
     def on_train_end(
@@ -197,3 +182,12 @@ class TrainingProgressCallback(TrainerCallback):
         
         if torch.backends.mps.is_available():
             logger.info(f"Final Memory Usage: {torch.mps.current_allocated_memory() / 1024**2:.2f} MB")
+
+    def on_evaluate(self, args, state, control, **kwargs):
+        """Called when evaluation starts."""
+        self.spinner.message = f"Evaluating - Epoch {int(state.epoch)}/{int(args.num_train_epochs)}"
+
+    def on_log(self, args, state, control, logs=None, **kwargs):
+        """Override to prevent default JSON logging."""
+        # Don't print the logs directly
+        pass

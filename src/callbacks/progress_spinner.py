@@ -39,4 +39,12 @@ class ProgressSpinner:
             sys.stdout.write(f'\r✓ {final_message}\n')
         else:
             sys.stdout.write('\r✓ Done!\n')
-        sys.stdout.flush() 
+        sys.stdout.flush()
+
+    def update_message(self, new_message: str) -> None:
+        """Update spinner message without stopping."""
+        self.message = new_message
+        if self.active:
+            sys.stdout.write('\r' + ' ' * 100)  # Clear current line
+            sys.stdout.write(f'\r{self.frames[self.current]} {self.message}')
+            sys.stdout.flush() 
