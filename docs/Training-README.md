@@ -144,3 +144,35 @@ python src/main.py --batch_size 4 --epochs 20 --learning_rate 1e-4
 ## Additional Resources
 - [PHI2 Layer Guide](PHI2-README.md) - Layer-specific tuning
 - [Examples](../examples/) - Sample configurations
+
+## Important Note on Prompt Formatting
+
+> **Note**: The `Phi2LoRATrainer` class automatically handles proper prompt formatting for both Phi-2 and Phi-3.5 models through its `format_instruction()` method. The following section explains why this formatting is crucial for effective training. An example can be seen on the phi-2 huggingface page](https://huggingface.co/microsoft/phi-2).
+
+### Why Prompt Formatting Matters
+Proper prompt formatting is crucial for effective model training. The model expects inputs in a specific structure that matches its pre-training format. Using incorrect formatting can lead to:
+- Degraded model performance
+- Inconsistent outputs
+- Poor instruction following
+- Ineffective training
+
+### Model-Specific Formats
+Different models may require different prompt formats:
+
+```python
+# Phi-2 & Phi-3.5 Format
+"""
+Instruct: {prompt}
+
+Output: {response}
+"""
+```
+
+Always use the correct format for your target model. Mixing formats or using incorrect structures can significantly impact the model's ability to learn and generate appropriate responses.
+
+### Best Practices
+- Maintain consistent formatting throughout your dataset
+- Include clear markers for instructions and responses
+- Use the appropriate format for your target model
+- Verify formatting before starting training
+- Test format consistency with sample outputs

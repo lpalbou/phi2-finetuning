@@ -275,22 +275,10 @@ class Phi2LoRATrainer:
         Returns:
             str: Formatted instruction
         """
-        if "Phi-3.5" in self.model_name:
-            # Phi-3.5 specific format
-            return (
-                "Instruct: {prompt}\n\n"
-                "Output: {response}\n"
-            ).format(prompt=prompt, response=response)
-        else:
-            # Original Phi-2 format
-            return (
-                "Below is an instruction that describes a task. Write a response that "
-                "completes the request in a humorous and engaging way.\n\n"
-                "### Instruction:\n"
-                f"{prompt}\n\n"
-                "### Response:\n"
-                f"{response}\n"
-            )
+        return (
+            "Instruct: {prompt}\n\n"
+            "Output: {response}\n"
+        ).format(prompt=prompt, response=response)
 
     def prepare_dataset(self) -> DatasetDict:
         """Prepare and tokenize the dataset with progress bar."""

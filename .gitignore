@@ -105,3 +105,5 @@ transformers_cache/
 # Cursor specific
 .cursorrules
 .cursorignore
+
+*fair2*
