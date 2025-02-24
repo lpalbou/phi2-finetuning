@@ -144,36 +144,93 @@ class CUDAOptimizedTrainer(BaseOptimizedTrainer):
         
         return loss.detach()
 
+    def evaluate(
+        self,
+        eval_dataset = None,
+        ignore_keys = None,
+        metric_key_prefix: str = "eval"
+    ) -> Dict[str, float]:
+        """Override evaluate to implement memory-efficient evaluation."""
+        # Clear memory before evaluation
+        self._clear_memory()
+        
+        # Set evaluation batch size to match training batch size
+        eval_batch_size = self.args.per_device_train_batch_size
+        original_batch_size = self.args.per_device_eval_batch_size
+        self.args.per_device_eval_batch_size = eval_batch_size
+        
+        try:
+            # Run evaluation with smaller batch size
+            metrics = super().evaluate(
+                eval_dataset=eval_dataset,
+                ignore_keys=ignore_keys,
+                metric_key_prefix=metric_key_prefix
+            )
+        finally:
+            # Restore original batch size
+            self.args.per_device_eval_batch_size = original_batch_size
+            # Clear memory after evaluation
+            self._clear_memory()
+            
+        return metrics
+
+    def _clear_memory(self) -> None:
+        """Comprehensive memory cleanup."""
+        # Clear CUDA cache
+        torch.cuda.empty_cache()
+        
+        # Force garbage collection
+        import gc
+        gc.collect()
+        
+        # Clear any leftover gradients
+        if self.model is not None:
+            for param in self.model.parameters():
+                if param.grad is not None:
+                    param.grad = None
+        
+        logger.info(
+            f"Memory cleared - Allocated: {torch.cuda.memory_allocated()/1e9:.2f}GB, "
+            f"Reserved: {torch.cuda.memory_reserved()/1e9:.2f}GB"
+        )
+
     def train(
         self,
         resume_from_checkpoint: Optional[Union[str, bool]] = None,
         trial: Union[Any, None] = None,
         **kwargs,
     ):
-        """Override train to add progress bar and CUDA-specific optimizations."""
-        # Calculate total steps
-        total_steps = len(self.train_dataset) * self.args.num_train_epochs
-        
-        # Create progress bar
-        self.progress_bar = tqdm(
-            total=total_steps,
-            desc="Training",
-            position=0,
-            leave=True,
-            dynamic_ncols=True
-        )
+        """Override train to add memory management."""
+        # Clear memory before training
+        self._clear_memory()
         
         try:
-            # Empty CUDA cache before training
-            torch.cuda.empty_cache()
-            
-            output = super().train(resume_from_checkpoint=resume_from_checkpoint, trial=trial, **kwargs)
-            self.progress_bar.close()
+            output = super().train(
+                resume_from_checkpoint=resume_from_checkpoint,
+                trial=trial,
+                **kwargs
+            )
             return output
             
         except Exception as e:
-            self.progress_bar.close()
-            raise
+            self._clear_memory()  # Clean up on error
+            raise e
+        finally:
+            self._clear_memory()  # Always clean up after training
+
+    def _maybe_log_save_evaluate(self, tr_loss, grad_norm, model, trial, epoch, ignore_keys_for_eval, start_time):
+        """Override to add memory management around evaluation."""
+        # Clear memory before evaluation
+        self._clear_memory()
+        
+        try:
+            super()._maybe_log_save_evaluate(
+                tr_loss, grad_norm, model, trial, epoch, 
+                ignore_keys_for_eval, start_time
+            )
+        finally:
+            # Clear memory after evaluation
+            self._clear_memory()
 
     def _save_checkpoint(
         self, 

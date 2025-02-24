@@ -21,13 +21,11 @@ def detect_device() -> Tuple[DeviceType, str]:
     if torch.cuda.is_available():
         device_type = "cuda"
         device_str = f"cuda:{torch.cuda.current_device()}"
-        logger.info(f"Using CUDA device: {torch.cuda.get_device_name()}")
         return device_type, device_str
         
     if hasattr(torch.backends, "mps") and torch.backends.mps.is_available():
         device_type = "mps"
         device_str = "mps"
-        logger.info("Using MPS device")
         return device_type, device_str
         
     device_type = "cpu"

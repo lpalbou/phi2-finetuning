@@ -148,27 +148,23 @@ class MPSOptimizedTrainer(BaseOptimizedTrainer):
         trial: Union[Any, None] = None,
         **kwargs,
     ):
-        """Override train to add progress bar."""
-        # Calculate total steps
-        total_steps = len(self.train_dataset) * self.args.num_train_epochs
-        
-        # Create progress bar
-        self.progress_bar = tqdm(
-            total=total_steps,
-            desc="Training",
-            position=0,
-            leave=True,
-            dynamic_ncols=True
-        )
+        """Override train to add memory management."""
+        # Clear memory before training
+        self._clear_memory()
         
         try:
-            output = super().train(resume_from_checkpoint=resume_from_checkpoint, trial=trial, **kwargs)
-            self.progress_bar.close()
+            output = super().train(
+                resume_from_checkpoint=resume_from_checkpoint,
+                trial=trial,
+                **kwargs
+            )
             return output
             
         except Exception as e:
-            self.progress_bar.close()
+            self._clear_memory()  # Clean up on error
             raise e
+        finally:
+            self._clear_memory()  # Always clean up after training
 
     def _save_checkpoint(
         self, 
@@ -250,3 +246,66 @@ class MPSOptimizedTrainer(BaseOptimizedTrainer):
     def _clear_device_cache(self) -> None:
         if torch.backends.mps.is_available():
             torch.mps.empty_cache()
+
+    def evaluate(
+        self,
+        eval_dataset = None,
+        ignore_keys = None,
+        metric_key_prefix: str = "eval"
+    ) -> Dict[str, float]:
+        """Override evaluate to implement memory-efficient evaluation."""
+        # Clear memory before evaluation
+        self._clear_memory()
+        
+        # Set evaluation batch size to match training batch size
+        eval_batch_size = self.args.per_device_train_batch_size
+        original_batch_size = self.args.per_device_eval_batch_size
+        self.args.per_device_eval_batch_size = eval_batch_size
+        
+        try:
+            metrics = super().evaluate(
+                eval_dataset=eval_dataset,
+                ignore_keys=ignore_keys,
+                metric_key_prefix=metric_key_prefix
+            )
+        finally:
+            # Restore original batch size
+            self.args.per_device_eval_batch_size = original_batch_size
+            # Clear memory after evaluation
+            self._clear_memory()
+        
+        return metrics
+
+    def _clear_memory(self) -> None:
+        """Comprehensive memory cleanup for MPS."""
+        if torch.backends.mps.is_available():
+            # Clear MPS cache
+            torch.mps.empty_cache()
+            
+            # Force garbage collection
+            import gc
+            gc.collect()
+            
+            # Clear any leftover gradients
+            if self.model is not None:
+                for param in self.model.parameters():
+                    if param.grad is not None:
+                        param.grad = None
+            
+            logger.info(
+                f"Memory cleared - Allocated: {torch.mps.current_allocated_memory()/1e9:.2f}GB"
+            )
+
+    def _maybe_log_save_evaluate(self, tr_loss, grad_norm, model, trial, epoch, ignore_keys_for_eval, start_time):
+        """Override to add memory management around evaluation."""
+        # Clear memory before evaluation
+        self._clear_memory()
+        
+        try:
+            super()._maybe_log_save_evaluate(
+                tr_loss, grad_norm, model, trial, epoch, 
+                ignore_keys_for_eval, start_time
+            )
+        finally:
+            # Clear memory after evaluation
+            self._clear_memory()
