@@ -1,117 +1,78 @@
-"""Training progress callback module for monitoring training progress."""
+"""Training progress callback module using Rich progress bars."""
 
 import logging
 import torch
-import time
-from transformers import TrainerCallback, TrainingArguments
-from typing import Dict, Any, Optional
-from tqdm.auto import tqdm
-import sys
-from .progress_spinner import ProgressSpinner  # Import the standalone version
+from transformers import TrainerCallback
+from typing import Dict, Optional
+from .progress_display import ProgressDisplay
 
 # Configure logging
-logging.basicConfig(
-    format='%(asctime)s - %(levelname)s - %(message)s',
-    level=logging.INFO
-)
+logging.basicConfig(format='%(asctime)s - %(levelname)s - %(message)s', level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 class TrainingProgressCallback(TrainerCallback):
-    """Custom callback for detailed training progress.
+    """Rich-based training progress callback."""
     
-    This callback provides detailed logging of training progress, including:
-    - Training start notification
-    - Per-step progress updates
-    - Memory usage tracking (for MPS devices)
-    - Epoch completion status
-    - Final training status
-    """
-
     def __init__(self):
-        """Initialize callback with trainer reference storage."""
+        """Initialize the callback."""
         super().__init__()
+        self.progress = ProgressDisplay()
         self.start_time = None
-        self.epoch_start_time = None
-        self.total_steps = 0
-        self.current_phase = None
-        self.spinner = None
-        self._trainer = None  # Store trainer reference
+        self._trainer = None
         
     def _get_memory_info(self) -> str:
-        """Get memory usage based on device type."""
+        """Get memory usage string."""
         try:
             if torch.cuda.is_available():
-                allocated = torch.cuda.memory_allocated() / (1024**3)  # Convert to GB
-                return f"GPU Memory: {allocated:.2f} GB"
+                allocated = torch.cuda.memory_allocated() / (1024**3)
+                return f"GPU: {allocated:.2f}GB"
             elif torch.backends.mps.is_available():
-                allocated = torch.mps.current_allocated_memory() / (1024**3)  # Convert to GB
-                return f"MPS Memory: {allocated:.2f} GB"
-            else:
-                return "Memory: N/A (CPU)"
+                allocated = torch.mps.current_allocated_memory() / (1024**3)
+                return f"MPS: {allocated:.2f}GB"
+            return "CPU"
         except Exception:
-            return "Memory: N/A"
+            return "N/A"
 
     def on_train_begin(self, args, state, control, **kwargs):
-        """Called at the beginning of training."""
-        self._trainer = kwargs.get('trainer')  # Store trainer reference
-        self.start_time = time.time()
-        self.total_steps = state.max_steps
+        """Start training progress display."""
+        self._trainer = kwargs.get('trainer')
+        description = f"Training - Epoch 0/{int(args.num_train_epochs)}"
+        self.progress.start(description, total=state.max_steps)
         
-        # Print initial training parameters once
+        # Log training parameters
         logger.info("\n=== Training Parameters ===")
-        logger.info(f"Number of examples: {len(state.train_dataloader)}")
-        logger.info(f"Number of Epochs: {args.num_train_epochs}")
-        logger.info(f"Batch size per device: {args.per_device_train_batch_size}")
+        logger.info(f"Examples: {len(state.train_dataloader)}")
+        logger.info(f"Epochs: {args.num_train_epochs}")
+        logger.info(f"Batch size: {args.per_device_train_batch_size}")
         logger.info(f"Total batch size: {args.per_device_train_batch_size * args.gradient_accumulation_steps}")
         logger.info(f"Gradient Accumulation steps: {args.gradient_accumulation_steps}")
         logger.info(f"Total optimization steps: {state.max_steps}")
-        
-        # Initialize progress spinner
-        self.spinner = ProgressSpinner(
-            f"Training - Epoch 0/{int(args.num_train_epochs)}"
-        )
-        self.spinner.start()
 
     def on_step_end(self, args, state, control, **kwargs):
-        """Called at the end of each step."""
+        """Update progress on step end."""
         if state.global_step % args.logging_steps == 0:
             current_epoch = int(state.epoch)
             mem_info = self._get_memory_info()
-            
-            self.spinner.update_message(
-                f"Training - Epoch {current_epoch}/{int(args.num_train_epochs)} | {mem_info}"
-            )
+            description = f"Training - Epoch {current_epoch}/{int(args.num_train_epochs)} | {mem_info}"
+            self.progress.update(description=description, advance=args.logging_steps)
 
     def on_evaluate(self, args, state, control, **kwargs):
-        """Called when evaluation starts."""
-        if self.spinner:
-            self.spinner.update_message(
-                f"Evaluating - Epoch {int(state.epoch)}/{int(args.num_train_epochs)}"
-            )
+        """Update display during evaluation."""
+        description = f"Evaluating - Epoch {int(state.epoch)}/{int(args.num_train_epochs)}"
+        self.progress.update(description=description)
 
     def on_epoch_end(self, args, state, control, **kwargs):
-        """Called at the end of each epoch."""
-        if self.spinner:
-            current_epoch = int(state.epoch)
-            self.spinner.update_message(
-                f"Completed Epoch {current_epoch}/{int(args.num_train_epochs)} | "
-                f"{self._get_memory_info()}"
-            )
+        """Update display on epoch end."""
+        current_epoch = int(state.epoch)
+        mem_info = self._get_memory_info()
+        description = f"Completed Epoch {current_epoch}/{int(args.num_train_epochs)} | {mem_info}"
+        self.progress.update(description=description)
 
     def on_train_end(self, args, state, control, **kwargs):
-        """Called at the end of training."""
-        if self.spinner:
-            self.spinner.stop("Training completed")
-            
-        total_time = time.time() - self.start_time
+        """Handle end of training."""
+        self.progress.stop("Training completed")
         
         logger.info("\n=== Training Completed ===")
-        logger.info(f"Total training time: {total_time/60:.1f}m")
         logger.info("\nTo try your model:")
         logger.info("1. Interactive mode: python -m src.dialogue --adapter_path output/final_adapter")
         logger.info("2. Compare with base: python compare_models.py")
-
-    def on_log(self, args, state, control, logs=None, **kwargs):
-        """Override to prevent default JSON logging."""
-        # Don't print the logs directly
-        pass

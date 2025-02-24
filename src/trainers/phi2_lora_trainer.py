@@ -21,7 +21,7 @@ from .mps_optimized_trainer import MPSOptimizedTrainer
 from ..callbacks.training_progress_callback import TrainingProgressCallback
 from .base_optimized_trainer import BaseOptimizedTrainer
 from ..utils.device_utils import detect_device
-from ..callbacks.progress_spinner import ProgressSpinner
+from ..callbacks.progress_display import ProgressDisplay
 
 # Configure logging
 logging.basicConfig(
@@ -130,13 +130,40 @@ class Phi2LoRATrainer:
             )
             self.tokenizer.pad_token = self.tokenizer.eos_token
             
-            # Load model with float32 for MPS compatibility
+            # Use our device detection utility
+            device_type, _ = detect_device()
+            
+            # Check for 8-bit optimization availability
+            use_8bit = False
+            try:
+                import bitsandbytes
+                if device_type == "cuda":
+                    logger.info("CUDA platform detected - checking 8-bit support")
+                    use_8bit = hasattr(bitsandbytes.cuda, 'cadam32bit_grad_fp32')
+                    if use_8bit:
+                        logger.info("8-bit optimization is available")
+                    else:
+                        logger.info("8-bit optimization not available - using standard precision")
+                elif device_type == "mps":
+                    logger.info("Apple Silicon detected - using MPS optimizations (8-bit not supported)")
+                
+            except ImportError:
+                logger.info("bitsandbytes not installed - using standard precision")
+            
+            # Load model with appropriate settings
             logger.info(f"Loading model: {self.model_name}")
+            load_kwargs = {
+                "torch_dtype": torch.float32,
+                "device_map": None,
+                "trust_remote_code": True
+            }
+            
+            if use_8bit and device_type == "cuda":
+                load_kwargs["load_in_8bit"] = True
+            
             self.model = AutoModelForCausalLM.from_pretrained(
                 self.model_name,
-                torch_dtype=torch.float32,
-                device_map=None,
-                trust_remote_code=True
+                **load_kwargs
             ).to(self.device)
 
             # Enable gradient checkpointing for memory efficiency
@@ -265,50 +292,53 @@ class Phi2LoRATrainer:
     def prepare_dataset(self) -> DatasetDict:
         """Prepare and tokenize the dataset with progress bar."""
         try:
-            # Load dataset with spinner
-            spinner = ProgressSpinner("Loading dataset file...")
-            spinner.start()
-            dataset = load_dataset('json', data_files=self.dataset_path)
-            self.validate_dataset(dataset)
-            spinner.stop("Dataset file loaded")
+            progress = ProgressDisplay()
+            dataset = None
+            tokenized_dataset = None
             
-            # Tokenization process
-            spinner = ProgressSpinner("Tokenizing dataset...")
-            spinner.start()
-            
-            def tokenize_function(examples: Dict[str, Any]) -> Dict[str, Any]:
-                texts = [
-                    self.format_instruction(p, r)
-                    for p, r in zip(examples['prompt'], examples['response'])
-                ]
-                return self.tokenizer(
-                    texts,
-                    truncation=True,
-                    max_length=self.config.max_seq_length,
-                    padding="max_length",
-                    return_tensors=None
+            # Single progress instance for the entire pipeline
+            with progress.task("Loading and processing dataset...") as p:
+                # Load dataset
+                p.update(description="Loading dataset file...")
+                dataset = load_dataset('json', data_files=self.dataset_path)
+                self.validate_dataset(dataset)
+                
+                # Tokenize
+                p.update(description="Tokenizing dataset...")
+                def tokenize_function(examples: Dict[str, Any]) -> Dict[str, Any]:
+                    texts = [
+                        self.format_instruction(p, r)
+                        for p, r in zip(examples['prompt'], examples['response'])
+                    ]
+                    return self.tokenizer(
+                        texts,
+                        truncation=True,
+                        max_length=self.config.max_seq_length,
+                        padding="max_length",
+                        return_tensors=None
+                    )
+
+                tokenized_dataset = dataset.map(
+                    tokenize_function,
+                    batched=True,
+                    remove_columns=dataset["train"].column_names,
+                    desc=None  # Remove the tqdm description to avoid conflicting messages
                 )
-
-            tokenized_dataset = dataset.map(
-                tokenize_function,
-                batched=True,
-                remove_columns=dataset["train"].column_names,
-                desc=None  # Remove the tqdm description to avoid conflicting messages
-            )
-            spinner.stop("Dataset tokenized")
-
-            # Dataset splitting
-            spinner = ProgressSpinner("Splitting dataset...")
-            spinner.start()
-            splits = tokenized_dataset["train"].train_test_split(
-                test_size=0.1,
-                shuffle=True,
-                seed=42
-            )
-            spinner.stop(
-                f"Dataset ready: {len(splits['train'])} training examples, "
-                f"{len(splits['test'])} test examples"
-            )
+                
+                # Split dataset
+                p.update(description="Splitting dataset...")
+                splits = tokenized_dataset["train"].train_test_split(
+                    test_size=0.1,
+                    shuffle=True,
+                    seed=42
+                )
+                
+                # Final status
+                p.console.print(
+                    f"[green]✓[/green] Dataset ready: "
+                    f"{len(splits['train'])} training examples, "
+                    f"{len(splits['test'])} test examples"
+                )
             
             return splits
 

@@ -9,6 +9,7 @@ safetensors>=0.4.0  # For safe model serialization
 
 # Progress and utilities
 tqdm>=4.66.0  # Progress bars
+rich>=13.7.0  # Rich text and formatting for terminal
 numpy>=1.24.0  # Numerical operations
 pandas>=2.2.0  # Data manipulation
 psutil>=5.9.0  # System monitoring
@@ -21,5 +22,5 @@ flake8>=7.0.0  # Code linting
 mypy>=1.8.0  # Type checking
 pytest>=7.4.0  # Testing
 
-# Optional: Memory optimization
-bitsandbytes>=0.41.0  # For 8-bit optimization
+# Platform-specific dependencies
+bitsandbytes>=0.41.0; platform_system == "Linux" or platform_system == "Windows"  # CUDA support
