@@ -139,8 +139,11 @@ class CUDAOptimizedTrainer(BaseOptimizedTrainer):
         # Scale loss and compute gradients
         self.scaler.scale(loss).backward()
         
-        # Store current loss for progress bar
+        # Store current loss for progress bar and logging
         self.current_loss = loss.detach().float()
+        
+        # Ensure loss is logged immediately
+        self.log({"loss": self.current_loss.item()})
         
         return loss.detach()
 

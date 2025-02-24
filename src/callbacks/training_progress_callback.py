@@ -74,9 +74,15 @@ class TrainingProgressCallback(TrainerCallback):
             # Update spinner message with current epoch and memory info
             current_epoch = int(state.epoch)
             mem_info = self._get_memory_info()
+            
+            # Safely get the loss value
+            loss_value = "N/A"
+            if state.log_history and len(state.log_history) > 0:
+                loss_value = f"{state.log_history[-1].get('loss', 'N/A'):.4f}"
+            
             self.spinner.update_message(
                 f"Training - Epoch {current_epoch}/{int(args.num_train_epochs)} | "
-                f"{mem_info} | Loss: {state.log_history[-1].get('loss', 'N/A'):.4f}"
+                f"{mem_info} | Loss: {loss_value}"
             )
 
     def on_evaluate(self, args, state, control, **kwargs):

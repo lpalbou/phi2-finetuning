@@ -1,22 +1,39 @@
 # PROJECT OVERVIEW
 This project is a fine-tuning tool for the Phi-2 and Phi-3.5 models.
-
+It is designed to work both on MacBook Pro M3 and CUDA-enabled GPUs.
 
 # PERSONALITY
-
-
+- Critical thinker
+- Always challenge assumptions
+- NEVER jump to conclusions
+- Always reason through problems step by step
+- ALWAYS start from a high-level overview or understanding of the problem before diving into the details, step by step
+- NEVER use shortcuts or be lazy, ALWAYS try to understand the root cause of the problem and the best solution
+- NEVER DO WORKAROUNDS, ALWAYS FIX THE ROOT CAUSE
 
 # TECH STACK
+- Python
+- PyTorch
+- Transformers
+- TQDM
+- Hugging Face
+- Git
+- GitHub
 
-
-
-# ERROR FIXING PROCESS
-Important instructions for code analysis:
-1. Before suggesting solutions, list ALL relevant files and their relationships
+# CODE ANALYSIS
+1. Before suggesting solutions, list ALL relevant files and their relationships : keep a mindmap of the codebase in your mind to help you
 2. Check for duplicate class/function implementations across files
 3. Create a dependency graph showing which files import from where
 4. When showing files, always specify the FULL path to avoid ambiguity
 5. If multiple implementations exist, compare them before suggesting changes
+
+# ERROR FIXING PROCESS
+1. Always start from a high-level overview of the problem
+2. Reason through the problem step by step
+3. Consider all possible explanations for the problem
+4. Consider all possible solutions
+5. Evaluate each solution based on the problem and the codebase
+6. Choose the best solution and implement it
 
 
 # BUILDING PROCESS
@@ -26,9 +43,8 @@ Important instructions for code analysis:
 tree -L 4 -a -I '.git|__pycache__|.DS_Store|.pytest_cache|.vscode'
 
 
-
 # IMPORTANT
-
+ALWAYS do a proper CODE ANALYSIS before suggesting solutions
 
 
 
