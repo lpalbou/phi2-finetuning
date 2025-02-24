@@ -58,8 +58,11 @@ class Phi2LoRATrainer:
     # lm_head : ensure concepts are properly expressed (Controls final text generation, affecting style, fluency, and formatting)
     MODEL_CONFIGS = {
         "microsoft/phi-2": {
-            "target_modules": ["q_proj", "k_proj", "v_proj", "dense", "embed_tokens", "mlp.fc1", "mlp.fc2", "lm_head"],
-            "description": "Original Phi-2 model target modules"
+            "target_modules": [
+                "q_proj", "k_proj", "v_proj", "dense",
+                "mlp.fc1", "mlp.fc2", "lm_head"
+            ],
+            "description": "Original Phi-2 model target modules focusing on attention and MLP layers"
         },
         "microsoft/Phi-3.5-mini-instruct": {
             "target_modules": [
