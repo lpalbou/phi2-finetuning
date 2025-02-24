@@ -1,6 +1,6 @@
 """Utility functions and custom exceptions."""
 
-from utils.exceptions import (
+from .exceptions import (
     DatasetValidationError,
     ModelPreparationError,
     TrainingError,

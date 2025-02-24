@@ -1,5 +1,5 @@
-"""Configuration module for training parameters."""
+"""Training configuration."""
 
-from config.training_config import TrainingConfig
+from .training_config import TrainingConfig
 
-__all__ = ['TrainingConfig']
+__all__ = ["TrainingConfig"]

@@ -15,11 +15,11 @@ from transformers import (
 from peft import LoraConfig, get_peft_model, TaskType
 from tqdm.auto import tqdm
 
-from config.training_config import TrainingConfig
-from utils.exceptions import DatasetValidationError, ModelPreparationError, DeviceError
-from trainers.mps_optimized_trainer import MPSOptimizedTrainer
-from callbacks.training_progress_callback import TrainingProgressCallback
-from trainers.base_optimized_trainer import BaseOptimizedTrainer
+from ..config.training_config import TrainingConfig
+from ..utils.exceptions import DatasetValidationError, ModelPreparationError, DeviceError
+from .mps_optimized_trainer import MPSOptimizedTrainer
+from ..callbacks.training_progress_callback import TrainingProgressCallback
+from .base_optimized_trainer import BaseOptimizedTrainer
 
 # Configure logging
 logging.basicConfig(
@@ -335,10 +335,10 @@ class Phi2LoRATrainer:
     def _get_optimized_trainer(self) -> Type[BaseOptimizedTrainer]:
         """Get the appropriate optimized trainer for the current device."""
         if torch.cuda.is_available():
-            from trainers.cuda_optimized_trainer import CUDAOptimizedTrainer
+            from .cuda_optimized_trainer import CUDAOptimizedTrainer
             return CUDAOptimizedTrainer
         elif torch.backends.mps.is_available():
-            from trainers.mps_optimized_trainer import MPSOptimizedTrainer
+            from .mps_optimized_trainer import MPSOptimizedTrainer
             return MPSOptimizedTrainer
         else:
             return Trainer

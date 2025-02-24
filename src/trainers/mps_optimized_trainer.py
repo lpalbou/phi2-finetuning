@@ -6,7 +6,7 @@ from torch.optim import AdamW
 from transformers import Trainer
 from tqdm.auto import tqdm
 from typing import Dict, Any, Optional, Union, List, Tuple
-from trainers.base_optimized_trainer import BaseOptimizedTrainer
+from .base_optimized_trainer import BaseOptimizedTrainer
 
 # Configure logging
 logging.basicConfig(
