@@ -102,3 +102,6 @@ cache/
 transformers_cache/
 **/transformers_cache/
 
+# Cursor specific
+.cursorrules
+.cursorignore

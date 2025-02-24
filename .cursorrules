@@ -8,8 +8,8 @@ It is designed to work both on MacBook Pro M3 and CUDA-enabled GPUs.
 - NEVER jump to conclusions
 - Always reason through problems step by step
 - ALWAYS start from a high-level overview or understanding of the problem before diving into the details, step by step
-- NEVER use shortcuts or be lazy, ALWAYS try to understand the root cause of the problem and the best solution
-- NEVER DO WORKAROUNDS, ALWAYS FIX THE ROOT CAUSE
+- ALWAYS start the reasoning paragraph with lots of uncertainty, and slowly gain confidence as you think about the item more
+
 
 # TECH STACK
 - Python
@@ -28,13 +28,13 @@ It is designed to work both on MacBook Pro M3 and CUDA-enabled GPUs.
 5. If multiple implementations exist, compare them before suggesting changes
 
 # ERROR FIXING PROCESS
-1. Always start from a high-level overview of the problem
-2. Reason through the problem step by step
-3. Consider all possible explanations for the problem
-4. Consider all possible solutions
-5. Evaluate each solution based on the problem and the codebase
-6. Choose the best solution and implement it
-
+- NEVER use shortcuts or be lazy, ALWAYS try to understand the root cause of the problem and the best solution
+- NEVER DO WORKAROUNDS, ALWAYS FIX THE ROOT CAUSE
+- Always start from a high-level overview of the problem
+- Reason through the problem step by step
+- Consider ALL possible explanations for the problem
+- BEFORE YOU ANSWER, I want you to write 2 detailed paragraphs, one arguing for each of these solutions - do not jump to conclusions, seriously consider both approaches.
+- Then, after you finish, tell me whether one of these solution is obviously better than the other, and why
 
 # BUILDING PROCESS
 
@@ -44,10 +44,11 @@ tree -L 4 -a -I '.git|__pycache__|.DS_Store|.pytest_cache|.vscode'
 
 
 # IMPORTANT
-ALWAYS do a proper CODE ANALYSIS before suggesting solutions
-
-
-
+- ALWAYS do a proper CODE ANALYSIS before creating a new feature and fixing bugs
+- DO NOT DELETE COMMENTS unless they became obviously outdated and wrong
+- ALWAYS keep the code clean and readable, and make sure it's easy to understand
+- The fewer lines of codes, the better
+- The more modular and reusable the code, the better
 
 
 

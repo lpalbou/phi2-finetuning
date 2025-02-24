@@ -75,10 +75,13 @@ class TrainingProgressCallback(TrainerCallback):
             current_epoch = int(state.epoch)
             mem_info = self._get_memory_info()
             
-            # Get loss from trainer's state - this is always available
-            current_loss = state.loss if state.loss is not None else "N/A"
-            if isinstance(current_loss, torch.Tensor):
-                current_loss = f"{current_loss.item():.4f}"
+            # Get loss from trainer's current_loss attribute
+            trainer = self.trainer  # Trainer instance is automatically set by HF
+            current_loss = "N/A"
+            if hasattr(trainer, 'current_loss'):
+                loss_tensor = getattr(trainer, 'current_loss')
+                if isinstance(loss_tensor, torch.Tensor):
+                    current_loss = f"{loss_tensor.item():.4f}"
             
             self.spinner.update_message(
                 f"Training - Epoch {current_epoch}/{int(args.num_train_epochs)} | "
