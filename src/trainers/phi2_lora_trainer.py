@@ -60,7 +60,8 @@ class Phi2LoRATrainer:
         "microsoft/phi-2": {
             "target_modules": [
                 "q_proj", "k_proj", "v_proj", "dense",
-                "mlp.fc1", "mlp.fc2", "lm_head"
+                "mlp.fc1", "mlp.fc2", 
+                "lm_head", "embed_tokens"
             ],
             "description": "Original Phi-2 model target modules focusing on attention and MLP layers"
         },

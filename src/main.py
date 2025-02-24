@@ -25,6 +25,69 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+def show_help_and_exit() -> None:
+    """Display detailed help message and exit."""
+    help_text = """
+Fine-tuning Tool for Language Models with LoRA
+============================================
+
+This tool allows you to fine-tune language models using LoRA (Low-Rank Adaptation).
+
+Basic Usage:
+-----------
+python main.py --output_dir ./output/my_model --dataset_path ./data/my_dataset.jsonl
+
+Required Arguments:
+-----------------
+--output_dir     Directory to save the fine-tuned model
+--dataset_path   Path to your training data (JSONL format)
+
+Common Options:
+-------------
+--model_name     Base model to fine-tune (default: microsoft/phi-2)
+--batch_size     Training batch size (default: 4)
+--epochs         Number of training epochs (default: 20)
+--learning_rate  Learning rate (default: 2e-4)
+
+Dataset Format:
+-------------
+The dataset should be a JSONL file where each line is a JSON object with:
+- 'prompt': The input text
+- 'response': The desired output text
+
+Example JSONL format:
+{"prompt": "What is the capital of France?", "response": "The capital of France is Paris."}
+
+Examples:
+--------
+1. Basic training:
+   python main.py --output_dir ./output/my_model --dataset_path ./data/train.jsonl
+
+2. Custom parameters:
+   python main.py --output_dir ./output/my_model --dataset_path ./data/train.jsonl \
+                 --batch_size 8 --epochs 30 --learning_rate 1e-4
+
+3. Different base model:
+   python main.py --output_dir ./output/my_model --dataset_path ./data/train.jsonl \
+                 --model_name microsoft/phi-3
+
+Advanced Options:
+---------------
+--max_length                Maximum sequence length (default: 1024)
+--gradient_accumulation     Steps between gradient updates (default: 16)
+--warmup_ratio              Learning rate warmup ratio (default: 0.05)
+--lora_r                    LoRA attention dimension (default: 8)
+--lora_alpha                LoRA alpha parameter (default: 32)
+--lora_dropout              LoRA dropout probability (default: 0.05)
+--verbose                   Logging verbosity (none/info/debug)
+--gradient_checkpointing    Enable memory optimization (default: True)
+--torch_compile             Enable torch.compile optimization (default: True)
+
+For more information, visit: https://github.com/lpalbou/phi2-finetuning
+"""
+    print(help_text)
+    sys.exit(0)
+
 def setup_arg_parser() -> argparse.ArgumentParser:
     """Set up command line argument parser.
     
@@ -32,7 +95,8 @@ def setup_arg_parser() -> argparse.ArgumentParser:
         argparse.ArgumentParser: Configured argument parser
     """
     parser = argparse.ArgumentParser(
-        description="Fine-tune language models with LoRA for humorous responses"
+        description="Fine-tune language models with LoRA for humorous responses",
+        formatter_class=argparse.RawDescriptionHelpFormatter
     )
     parser.add_argument(
         "--output_dir",
@@ -249,6 +313,10 @@ def setup_logging(verbose_level: str) -> None:
 
 def main() -> None:
     """Main execution function."""
+    # Show help if no arguments provided
+    if len(sys.argv) == 1:
+        show_help_and_exit()
+        
     parser = setup_arg_parser()
     args = parser.parse_args()
     
