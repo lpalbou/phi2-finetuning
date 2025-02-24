@@ -7,7 +7,7 @@ This project provides a comprehensive toolkit for fine-tuning Microsoft's Phi-2 
 - **Fine-tuning with LoRA**
   - Memory-efficient training optimized for Apple Silicon (MPS) and CUDA
   - Small adapter files (~20MB vs full model ~2.7GB)
-  - Detailed layer control ([see PHI2 Layer Guide](src/trainers/PHI2-README.md))
+  - Detailed layer control ([see PHI2 Layer Guide](docs/PHI2-README.md))
 
 - **Interactive Tools**
   - `dialogue.py`: Chat with base or fine-tuned models
@@ -25,7 +25,7 @@ This project provides a comprehensive toolkit for fine-tuning Microsoft's Phi-2 
 
 1. **Installation**
 ```bash
-git clone [your-repo-url]
+git clone https://github.com/lpalbou/phi2-finetuning.git
 cd phi2-finetuning
 python -m venv .venv
 source .venv/bin/activate  # On Unix/macOS
@@ -60,21 +60,21 @@ python src/compare_models.py --adapter_path output/my_model/final_adapter
 ```
 .
 ├── src/
-│   ├── config/           # Training configurations
-│   ├── trainers/         # Training implementations
-│   ├── callbacks/        # Training callbacks
-│   ├── utils/           # Utility functions
-│   ├── main.py          # Training entry point
-│   ├── dialogue.py      # Interactive chat
-│   └── compare_models.py # Model comparison
-├── data/                # Training datasets
-└── docs/               # Additional documentation
+│   ├── config/            # Training configurations
+│   ├── trainers/          # Training implementations
+│   ├── callbacks/         # Training callbacks
+│   ├── utils/             # Utility functions
+│   ├── main.py            # Training entry point
+│   ├── dialogue.py        # Interactive chat
+│   └── compare_models.py  # Model comparison
+├── data/                  # Training datasets
+└── docs/                  # Additional documentation
 ```
 
 ## 🛠️ Tools Guide
 
 ### Training (main.py)
-The primary tool for fine-tuning models. Creates LoRA adapters that modify specific model layers for your use case. [See detailed layer guide](src/trainers/PHI2-README.md).
+The primary tool for fine-tuning models. Creates LoRA adapters that modify specific model layers for your use case. [See detailed layer guide](docs/PHI2-README.md).
 
 ### Chat (dialogue.py)
 Interactive chat interface that can use:
@@ -245,7 +245,7 @@ The Phi-2 model consists of multiple transformer layers that can be selectively 
 ## 📚 Additional Resources
 
 - [PHI2 Layer Guide](docs/PHI2-README.md) - Detailed explanation of model layers
-- [Training Guide](Training-README.md) - In-depth training documentation
+- [Training Guide](docs/Training-README.md) - In-depth training documentation
 - [Examples](examples/) - Sample datasets and configurations
 
 ## 🤝 Contributing
