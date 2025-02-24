@@ -5,6 +5,7 @@ import logging
 import os
 import sys
 import torch
+import json
 
 from src.config.training_config import TrainingConfig
 from src.trainers.phi2_lora_trainer import Phi2LoRATrainer
@@ -48,43 +49,43 @@ def setup_arg_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--batch_size",
         type=int,
-        default=1,
+        default=4,
         help="Training batch size per device"
     )
     parser.add_argument(
         "--epochs",
         type=int,
-        default=3,
+        default=20,
         help="Number of training epochs"
     )
     parser.add_argument(
         "--learning_rate",
         type=float,
-        default=2e-4,
+        default=1e-4,
         help="Learning rate"
     )
     parser.add_argument(
         "--max_length",
         type=int,
-        default=1024,
+        default=2048,
         help="Maximum sequence length"
     )
     parser.add_argument(
         "--gradient_accumulation_steps",
         type=int,
-        default=64,
+        default=8,
         help="Number of gradient accumulation steps"
     )
     parser.add_argument(
         "--warmup_ratio",
         type=float,
-        default=0.03,
+        default=0.05,
         help="Warmup ratio for learning rate scheduler"
     )
     parser.add_argument(
         "--lora_r",
         type=int,
-        default=4,
+        default=16,
         help="LoRA attention dimension"
     )
     parser.add_argument(
@@ -96,7 +97,7 @@ def setup_arg_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--lora_dropout",
         type=float,
-        default=0.1,
+        default=0.05,
         help="LoRA dropout probability"
     )
     parser.add_argument(
@@ -131,6 +132,77 @@ def validate_environment() -> None:
     else:
         logger.warning("No GPU detected, using CPU. Training may be slow")
 
+def validate_dataset_file(dataset_path: str) -> None:
+    """Validate that the dataset file exists and has valid JSONL format.
+    
+    Args:
+        dataset_path: Path to the dataset file
+        
+    Raises:
+        DatasetValidationError: If validation fails
+    """
+    # Check if file exists
+    if not os.path.exists(dataset_path):
+        raise DatasetValidationError(
+            f"Dataset file not found: {dataset_path}\n"
+            "Please check:\n"
+            "1. The file path is correct\n"
+            "2. You have read permissions for the file\n"
+            "3. The file exists in the specified location"
+        )
+    
+    # Check file extension
+    if not dataset_path.endswith('.jsonl'):
+        raise DatasetValidationError(
+            f"Invalid file format: {dataset_path}\n"
+            "The dataset must be a JSONL file with .jsonl extension.\n"
+            "Each line should contain a JSON object with 'prompt' and 'response' fields."
+        )
+    
+    # Validate JSONL format and required fields
+    try:
+        with open(dataset_path, 'r', encoding='utf-8') as f:
+            first_line = False
+            line_number = 0
+            for line in f:
+                line_number += 1
+                try:
+                    data = json.loads(line.strip())
+                    if not first_line:
+                        if not isinstance(data, dict):
+                            raise DatasetValidationError(
+                                f"Invalid data format at line {line_number}. "
+                                "Each line must contain a JSON object."
+                            )
+                        if 'prompt' not in data or 'response' not in data:
+                            raise DatasetValidationError(
+                                f"Missing required fields at line {line_number}.\n"
+                                "Each line must contain 'prompt' and 'response' fields.\n"
+                                f"Found fields: {list(data.keys())}"
+                            )
+                        first_line = True
+                except json.JSONDecodeError as e:
+                    raise DatasetValidationError(
+                        f"Invalid JSON at line {line_number}: {str(e)}\n"
+                        "Each line must be a valid JSON object."
+                    )
+            
+            if line_number == 0:
+                raise DatasetValidationError(
+                    f"Empty dataset file: {dataset_path}\n"
+                    "The JSONL file must contain at least one example."
+                )
+            
+            logger.info(f"Dataset validation successful: {line_number} examples found")
+            
+    except Exception as e:
+        if isinstance(e, DatasetValidationError):
+            raise e
+        raise DatasetValidationError(
+            f"Error reading dataset file: {str(e)}\n"
+            "Please ensure the file is accessible and properly formatted."
+        )
+
 def setup_training_config(args: argparse.Namespace) -> TrainingConfig:
     """Create training configuration from command line arguments.
     
@@ -163,6 +235,9 @@ def main() -> None:
     try:
         # Validate environment
         validate_environment()
+        
+        # Validate dataset file first
+        validate_dataset_file(args.dataset_path)
 
         # Create output directory
         os.makedirs(args.output_dir, exist_ok=True)
@@ -187,7 +262,10 @@ def main() -> None:
         logger.info(f"Training completed. Model saved to {args.output_dir}")
 
     except DatasetValidationError as e:
-        logger.error(f"Dataset validation failed: {str(e)}")
+        logger.error("Dataset Validation Error:")
+        logger.error("------------------------")
+        logger.error(str(e))
+        logger.error("\nPlease fix the dataset issues and try again.")
         sys.exit(1)
     except ModelPreparationError as e:
         logger.error(f"Model preparation failed: {str(e)}")
