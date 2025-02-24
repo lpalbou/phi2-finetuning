@@ -83,8 +83,7 @@ class ModelDialogue:
         """
         # Format the prompt
         formatted_prompt = (
-            "Instruct: {prompt}\n"
-            "Output: "
+            "Instruct: {prompt}.\nOutput: "
         )
         
         # Tokenize

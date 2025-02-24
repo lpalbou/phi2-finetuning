@@ -63,8 +63,7 @@ class ModelComparator:
         
         # Use the same format as dialogue.py
         formatted_prompt = (
-            "Instruct: {prompt}\n"
-            "Output: "
+            "Instruct: {prompt}.\nOutput: "
         ).format(prompt=question)
         
         inputs = self.tokenizer(formatted_prompt, return_tensors="pt").to(self.device)

@@ -289,8 +289,7 @@ class Phi2LoRATrainer:
             str: Formatted instruction
         """
         return (
-            "Instruct: {prompt}\n\n"
-            "Output: {response}\n"
+            "Instruct: {prompt}.\n\nOutput: {response}\n"
         ).format(prompt=prompt, response=response)
 
     def prepare_dataset(self) -> DatasetDict:
